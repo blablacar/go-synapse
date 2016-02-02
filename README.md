@@ -1,10 +1,20 @@
-# Synapse #
+___/!\ This Software is in Alpha Stage! Don't use it in production, until it's considered Stable /!\___
 
-Synapse is Airbnb's new system for service discovery.
-Synapse solves the problem of automated fail-over in the cloud, where failover via network re-configuration is impossible.
+# GO-Synapse #
+
+Go-Synapse is a new system for service discovery, a Go rewritten work of Airbnb's [Synapse](https://github.com/airbnb/synapse).
+Synapse solves the problem of automated fail-over in the cloud, where failover via network re-configuration is impossible (or not desirable).
 The end result is the ability to connect internal services together in a scalable, fault-tolerant way.
 
+## Airbnb ##
+
+Thank you guy to write a so nice piece of software with Synapse. But we really want to stop deploying a full ruby stack on our containers ! Our first thoughts were to ask you to rewrote it in C/C++/Java/Go. But our team convince ourself that it was not the best behavior to have at first. So we rewrote it in Go (See more explanations in the Motivation section below).
+
+We want to thanks the huge work made by Airbnb's engineering team. We love you guy's ! Your tools (nerve & synapse) are in the center of our infrastructure at BlaBlaCar. Even if we fork Synapse to rewrote in Go, we will continue to follow your repository, and consider it as the reference. Big Up to YOU! We send you all love and kisses you deserve (and even more).
+
 ## Motivation ##
+
+Why rewrote the Airbnb's software ? Same story that as [GO-Nerve](https://github.com/blablacar/go-nerve). A mix between our own lack of ruby knowledge and our goal to have a single binary. Why Go (because we're also easy with Java) ? After compilation, we have a single binary which is easier to deploy on our full container infrastructure! No need to deploy the full ruby stack, nor java one.
 
 Synapse emerged from the need to maintain high-availability applications in the cloud.
 Traditional high-availability techniques, which involve using a CRM like [pacemaker](http://linux-ha.org/wiki/Pacemaker), do not work in environments where the end-user has no control over the networking.
@@ -25,31 +35,30 @@ Synapse solves these difficulties in a simple and fault-tolerant way.
 
 ## How Synapse Works ##
 
-Synapse runs on your application servers; here at Airbnb, we just run it on every box we deploy.
+Synapse runs on your application servers; here at BlaBlaCar, we just run it on lots of containers we deploy.
 The heart of synapse is actually [HAProxy](http://haproxy.1wt.eu/), a stable and proven routing component.
 For every external service that your application talks to, we assign a synapse local port on localhost.
 Synapse creates a proxy from the local port to the service, and you reconfigure your application to talk to the proxy.
 
-Synapse comes with a number of `watchers`, which are responsible for service discovery.
+GO-Synapse comes with one `watcher`, which are responsible for service discovery.
 The synapse watchers take care of re-configuring the proxy so that it always points at available servers.
-We've included a number of default watchers, including ones that query zookeeper and ones using the AWS API.
-It is easy to write your own watchers for your use case, and we encourage submitting them back to the project.
+We've included the one that query zookeeper.
 
 ## Example Migration ##
 
-Let's suppose your rails application depends on a Postgres database instance.
+Let's suppose your Symfony application depends on a MariaDB database instance.
 The database.yaml file has the DB host and port hardcoded:
 
 ```yaml
 production:
   database: mydb
   host: mydb.example.com
-  port: 5432
+  port: 3306
 ```
 
 You would like to be able to fail over to a different database in case the original dies.
 Let's suppose your instance is running in AWS and you're using the tag 'proddb' set to 'true' to indicate the prod DB.
-You set up synapse to proxy the DB connection on `localhost:3219` in the `synapse.conf.yaml` file.
+You set up synapse to proxy the DB connection on `localhost:3306` in the `synapse.conf.yaml` file.
 Add a hash under `services` that looks like this:
 
 ```yaml
@@ -60,13 +69,13 @@ Add a hash under `services` that looks like this:
     -
      name: "default-db"
      host: "mydb.example.com"
-     port: 5432
+     port: 3306
    discovery:
     method: "awstag"
     tag_name: "proddb"
     tag_value: "true"
    haproxy:
-    port: 3219
+    port: 3307
     server_options: "check inter 2000 rise 3 fall 2"
     frontend: mode tcp
     backend: mode tcp
@@ -78,37 +87,52 @@ And then change your database.yaml file to look like this:
 production:
   database: mydb
   host: localhost
-  port: 3219
+  port: 3307
 ```
 
 Start up synapse.
-It will configure HAProxy with a proxy from `localhost:3219` to your DB.
-It will attempt to find the DB using the AWS API; if that does not work, it will default to the DB given in `default_servers`.
-In the worst case, if AWS API is down and you need to change which DB your application talks to, simply edit the `synapse.conf.json` file, update the `default_servers` and restart synapse.
+It will configure HAProxy with a proxy from `localhost:3307` to your DB.
+It will attempt to find the DB using the Zookeeper Watcher; if that does not work, it will default to the DB given in `default_servers`.
+In the worst case, if Zookeeper is down and you need to change which DB your application talks to, simply edit the `synapse.conf.json` file, update the `default_servers` and restart synapse.
 HAProxy will be transparently reloaded, and your application will keep running without a hiccup.
 
-## Installation
+## Installation ##
 
-To download and run the synapse binary, first install a version of ruby. Then,
-install synapse with:
+### Pre-requisite ###
+Verify that you have a decent installation of the Golang compiler, you need one.
+Then, we use here the [GOM](https://github.com/mattn/gom) tool to manage dependencies and build the synapse binary. All install information can be found on the github repository:
+https://github.com/mattn/gom
 
-```bash
-$ mkdir -p /opt/smartstack/synapse
-# If you are on Ruby 2.X use --no-document instead of --no-ri --no-rdoc
-$ gem install synapse --install-dir /opt/smartstack/synapse --no-ri --no-rdoc
-```
+Optionnaly, you can also install a GNU Make on your system. It's not needed, but will ease the build and install process.
 
-This will download synapse and its dependencies into /opt/smartstack/synapse. You
-might wish to omit the `--install-dir` flag to use your system's default gem
-path, however this will require you to run `gem install synapse` with root
-permissions.
+### Build ###
 
-You can now run the synapse binary like:
+Clone the repository where you want to have it:
 
-```bash
-export GEM_PATH=/opt/smartstack/synapse
-/opt/smartstack/synapse/bin/synapse --help
-```
+git clone https://github.com/blablacar/go-synapse
+
+Install in _vendor directory all dependencies (for a list take a look at the Gomfile):
+
+	gom install
+
+Then you can build the Synapse Binary:
+
+	gom build synapse/synapse
+
+### Makefile ###
+If you have a GNU Make or equivalent on your system, you can also use it to build and install nerve.
+
+	`make dep-install` # Will install all go dependencies into _vendor directory
+
+	`make build` # Will compile nerve binary and push it into local bin/ diretory
+
+	`make install` # Will install nerve binary in the system directory /usr/local/bin (can be overriden at the top of the Makefile)
+
+	`make clean` # Will remove all existing binary in bin/ and remove the dependencies directory _vendor
+
+	`make all` # an alias to make clean dep-install build
+
+### HAProxy ###
 
 Don't forget to install HAProxy too.
 
