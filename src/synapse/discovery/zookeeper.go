@@ -16,7 +16,7 @@ type zookeeperDiscovery struct {
 	ZKPath string
 	ZKConnection *zk.Conn
 	destroySignal chan bool
-	waitGroup sync.WaitGroup 
+	waitGroup sync.WaitGroup
 }
 
 
@@ -69,13 +69,13 @@ func(zd *zookeeperDiscovery) WatchForChildren(watchChildsSignal chan bool) (chan
 	snapshots := make(chan []string)
 	errors := make(chan error)
 	go func() {
+		snapshot, _, events, err := zd.ZKConnection.ChildrenW(zd.ZKPath)
+		if err != nil {
+			errors <- err
+			watchChildsSignal <- true
+			return
+		}
 		for {
-			snapshot, _, events, err := zd.ZKConnection.ChildrenW(zd.ZKPath)
-			if err != nil {
-				errors <- err
-				watchChildsSignal <- true
-				return
-			}
 			var event zk.Event
 			select {
 			case event = <-events:
@@ -201,34 +201,36 @@ func(zd *zookeeperDiscovery) Run(stop <-chan bool) error {
 					break StopLoop
 				case <-watchChildsRoutine:
 					log.Warn("Watch Childs Routine down - Restarting the whole Discovery Process")
-					zd.destroyZeroLoop()
+					zd.Destroy()
 					break StopLoop
 				default:
 					time.Sleep(500 * time.Millisecond)
 			}
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
-	return zd.Destroy()
+	return zd.destroyTwoLoop()
 }
 
-func(zd *zookeeperDiscovery) Destroy() error {
+func(zd *zookeeperDiscovery) destroyTwoLoop() error {
 	//Send 2 signals to kill the discovery loops
 	zd.destroySignal <- true
 	zd.destroySignal <- true
-	return zd.destroyZeroLoop()
+	return zd.Destroy()
 }
 
 func(zd *zookeeperDiscovery) destroyOneLoop() error {
 	zd.destroySignal <- true
-	return zd.destroyZeroLoop()
+	return zd.Destroy()
 }
 
-func(zd *zookeeperDiscovery) destroyZeroLoop() error {
+func(zd *zookeeperDiscovery) Destroy() error {
 	//Wait for all thread to terminate
 	zd.waitGroup.Wait()
 	//Close properly the connection to Zookeeper
 	if zd.ZKConnection != nil {
 		zd.ZKConnection.Close()
+		zd.ZKConnection = nil
 	}
 	return nil
 }

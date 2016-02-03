@@ -27,6 +27,7 @@ type DiscoveryI interface {
         SetBaseConfiguration(ConnectTimeout int)
 	GetDiscoveredHosts() []DiscoveredHost
 	Run(stop <-chan bool) error
+	Destroy() error
 }
 
 // Create a Discovery object

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"errors"
+	"net"
 )
 
 type HAProxy struct {
@@ -32,13 +33,14 @@ func(h *HAProxy) Initialize(conf SynapseHAProxyConfiguration, Services []Synapse
 	}
 }
 
-func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,error) {
+func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,[]string,error) {
 	isModified := false
 	hasToRestart := false
+	var socketCommands []string
 	//Compare current and new Backends (and all associated states)
 	if len(newBackends) != len(h.Services) {
 		err := errors.New("[" + strconv.Itoa(len(newBackends)) + "] Backends to watch != [" + strconv.Itoa(len(h.Services)) + "] Services")
-		return isModified, hasToRestart, err
+		return isModified, hasToRestart, socketCommands, err
 	}else {
 		if len(newBackends) == len(h.Backends) {
 			for index, backend := range newBackends {
@@ -50,6 +52,13 @@ func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,
 						if server.Name == h.Backends[index].Servers[i].Name && server.Host == h.Backends[index].Servers[i].Host && server.Port == h.Backends[index].Servers[i].Port {
 							if server.Disabled != h.Backends[index].Servers[i].Disabled {
 								isModified = true
+								if server.Disabled {
+									socketCommands = append(socketCommands,"disable server " + backend.Name + "/" + server.Name)
+									log.Debug("disable server " + backend.Name + "/" + server.Name)
+								}else {
+									socketCommands = append(socketCommands,"enable server " + backend.Name + "/" + server.Name)
+									log.Debug("enable server " + backend.Name + "/" + server.Name)
+								}
 							}
 						}else {
 							isModified = true
@@ -63,7 +72,7 @@ func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,
 			hasToRestart = true
 		}
 	}
-	return isModified, hasToRestart, nil
+	return isModified, hasToRestart, socketCommands, nil
 }
 
 func(h *HAProxy) getAllBackends() HAProxyBackendSlice {
@@ -120,7 +129,16 @@ func(h *HAProxy) SaveState() error {
 
 //Load the current state of all Backends from StateFile
 func(h *HAProxy) LoadState() error {
-	if _, err := os.Stat(h.StateFile); err == nil {
+	if stat, err := os.Stat(h.StateFile); err == nil {
+		fileModTime := stat.ModTime()
+		now := time.Now()
+		ttl := 2000
+		expirationDate := fileModTime.Add(time.Duration(ttl) * time.Millisecond)
+		if expirationDate.Before(now) {
+			log.Debug("State File exists, but is expired")
+			return nil
+		}
+
 		// Open and read the configuration file
 		file, err := ioutil.ReadFile(h.StateFile)
 		if err != nil {
@@ -176,6 +194,9 @@ func(h *HAProxy) SaveConfiguration() error {
 				if server.HAProxyServerOptions != "" {
 					data += " " + server.HAProxyServerOptions
 				}
+				if server.Disabled {
+					data += " disabled"
+				}
 				data += "\n"
 			}
 			data += "\n"
@@ -207,8 +228,36 @@ func(h *HAProxy) reloadHAProxyDaemon() error {
 	return nil
 }
 
-func(h *HAProxy) changeBackendsStateBySocket() error {
+func(h *HAProxy) changeBackendsStateBySocket(commands []string) error {
 	if h.Configuration.DoSocket {
+		//Send all command to socket
+		conn, err := net.Dial("unix",h.Configuration.SocketFilePath)
+		if err != nil {
+			log.WithError(err).Warn("Unable to open HAProxy socket to send new backend state")
+			return err
+		}
+		for _, command := range commands {
+			_, err = conn.Write([]byte(command))
+			if err != nil {
+				log.WithError(err).WithField("command",command).Warn("Unable to write command to HAProxy socket")
+				conn.Close()
+				return err
+			}
+			buf := make([]byte, 1024)
+			n, err := conn.Read(buf[:])
+			if err != nil {
+				log.WithError(err).WithField("command",command).Warn("Unable to read after command from HAProxy socket")
+				conn.Close()
+				return err
+			}
+			return_string := string(buf[0:n])
+			if return_string != "\n" {
+				log.WithField("command",command).Warn("Unknown error after sending command from HAProxy socket[" + return_string + "]")
+				conn.Close()
+				return err
+			}
+		}
+		conn.Close()
 	}else {
 		log.Debug("Do not send modified state to HAProxy cause of do_socket flag set to false")
 	}
@@ -228,7 +277,7 @@ func(h *HAProxy) Run(stop <-chan bool) {
 	for {
 		//First Get all backends info
 		backends := h.getAllBackends()
-		isModified, hasToRestart,err := h.isBackendsModified(backends)
+		isModified, hasToRestart, socketCommands, err := h.isBackendsModified(backends)
 		if err != nil {
 			log.WithError(err).Warn("Error in modification since last check")
 			log.Warn("Pretending there's no modification, to keep last valid state informations")
@@ -255,7 +304,10 @@ func(h *HAProxy) Run(stop <-chan bool) {
 							h.reloadHAProxyDaemon()
 						}else {
 							//Send command to haproxy using the control socket
-							h.changeBackendsStateBySocket()
+							err = h.changeBackendsStateBySocket(socketCommands)
+							if err != nil {
+								h.reloadHAProxyDaemon()
+							}
 						}
 					}
 				}
