@@ -17,21 +17,12 @@ We want to thanks the huge work made by Airbnb's engineering team. We love you g
 Why rewrote the Airbnb's software ? Same story that as [GO-Nerve](https://github.com/blablacar/go-nerve). A mix between our own lack of ruby knowledge and our goal to have a single binary. Why Go (because we're also easy with Java) ? After compilation, we have a single binary which is easier to deploy on our full container infrastructure! No need to deploy the full ruby stack, nor java one.
 
 Synapse emerged from the need to maintain high-availability applications in the cloud.
-Traditional high-availability techniques, which involve using a CRM like [pacemaker](http://linux-ha.org/wiki/Pacemaker), do not work in environments where the end-user has no control over the networking.
-In an environment like Amazon's EC2, all of the available workarounds are suboptimal:
 
-* Round-robin DNS: Slow to converge, and doesn't work when applications cache DNS lookups (which is frequent)
-* Elastic IPs: slow to converge, limited in number, public-facing-only, which makes them less useful for internal services
-* ELB: ultimately uses DNS (see above), can't tune load balancing, have to launch a new one for every service * region, autoscaling doesn't happen fast enough
+Why choosing Synapse at first ? The answer is not so simple to explain. But, let's try !
 
-One solution to this problem is a discovery service, like [Apache Zookeeper](http://zookeeper.apache.org/).
-However, Zookeeper and similar services have their own problems:
-
-* Service discovery is embedded in all of your apps; often, integration is not simple
-* The discovery layer itself is subject to failure
-* Requires additional servers/instances
-
-Synapse solves these difficulties in a simple and fault-tolerant way.
+First, at BlaBlaCar, we have a lot of services written in PHP. And even if the language can help you to going fast, it have some important caveats. The most important one here is the lack of server context. After each call, php empty all local states. When you want to maintain complex topology of your services, it's far from easy. You can try to wrote lots of code to circumvent the problem. Here at BBC, we choose to always use HAProxy between PHP and backends.
+It worked for well for us during a short period of time... When you have only 2 or 3 HAproxy to maintain and to serve all of your services, you can do it easily (it's really not that hard). At BlaBlaCar we used Keepalived for the HA of HAProxy, and Chef, to maintain our rules. After a while, you have to split your HAProxy cause of your services growth... And it become quickly very hard to manage!
+The best way we found to have a scalable use of HAProxy was to add it on each container using a different entry for each services. Now, the problem was how to maintain the service state, and all backends available in a high changing world (thx to container). With Chef, we converged every 30mins before. Even with a lot of imagination, we don't want to converge each 500ms with a tools like Chef. So we came to Nerve/Synapse. And we use only the ZooKeeper / HAProxy part of original Airbnb's [Synapse](https://github.com/airbnb/synapse)
 
 ## How Synapse Works ##
 
@@ -58,27 +49,30 @@ production:
 
 You would like to be able to fail over to a different database in case the original dies.
 Let's suppose your instance is running in AWS and you're using the tag 'proddb' set to 'true' to indicate the prod DB.
-You set up synapse to proxy the DB connection on `localhost:3306` in the `synapse.conf.yaml` file.
-Add a hash under `services` that looks like this:
+You set up synapse to proxy the DB connection on `localhost:3306` in the `synapse.conf.json` file.
+Add an array under `services` that looks like this:
 
-```yaml
----
- services:
-  proddb:
-   default_servers:
-    -
-     name: "default-db"
-     host: "mydb.example.com"
-     port: 3306
-   discovery:
-    method: "awstag"
-    tag_name: "proddb"
-    tag_value: "true"
-   haproxy:
-    port: 3307
-    server_options: "check inter 2000 rise 3 fall 2"
-    frontend: mode tcp
-    backend: mode tcp
+```json
+ "services": [
+  {
+   "name": "proddb",
+   "default_servers": {
+     "name": "default-db",
+     "host": "mydb.example.com",
+     "port": 3306
+   },
+   "discovery": {
+    "method": "zookeeper"
+    "path": "/services/proddb"
+    "hosts": ["zkhost1","zkhost2"]
+   },
+   "haproxy": {
+    "port": 3307,
+    "server_options": "check inter 2000 rise 3 fall 2",
+    "frontend: mode tcp",
+    "backend: mode tcp"
+  }
+ ]
 ```
 
 And then change your database.yaml file to look like this:
@@ -139,11 +133,12 @@ Don't forget to install HAProxy too.
 ## Configuration ##
 
 Synapse depends on a single config file in JSON format; it's usually called `synapse.conf.json`.
-The file has three main sections.
+The file has four main sections.
 
-1. [`services`](#services): lists the services you'd like to connect.
-2. [`haproxy`](#haproxy): specifies how to configure and interact with HAProxy.
-3. [`file_output`](#file) (optional): specifies where to write service state to on the filesystem.
+1. `instance_id`: the name synapse will use in log; makes debugging easier when using a central log aggregation tool like ELK
+2. `log-level`: The log level (any valid value from DEBUG, INFO, WARN, FATAL) (default to 'WARN')
+3. [`services`](#services): lists the services you'd like to connect.
+4. [`haproxy`](#haproxy): specifies how to configure and interact with HAProxy.
 
 <a name="services"/>
 ### Configuring a Service ###
@@ -183,52 +178,6 @@ The watcher assumes that each node under `path` represents a service server.
 The following arguments are optional:
 
 * `decode`: A hash containing configuration for how to decode the data found in zookeeper.
-
-###### Decoding service nodes ######
-Synapse attempts to decode the data in each of these nodes using JSON and you can control how it is decoded with the `decode` argument. If provided, the `decode` hash should contain the following:
-
-* `method` (one of ['`nerve`', '`serverset`'], default: '`nerve`'): The kind of data to expect to find in zookeeper nodes
-* `endpoint_name` (default: nil): If using the `serverset` method, this controls which of the `additionalEndpoints` is chosen instead of the `serviceEndpoint` data. If not supplied the `serverset` method will use the host/port from the `serviceEndpoint` data.
-
-If the `method` is `nerve`, then we expect to find nerve registrations with a `host` and a `port`.
-
-If the `method` is `serverset` then we expect to find Finagle ServerSet
-(also used by [Aurora](https://github.com/apache/aurora/blob/master/docs/user-guide.md#service-discovery)) registrations with a `serviceEndpoint` and optionally one or more `additionalEndpoints`.
-The Synapse `name` will be automatically deduced from `shard` if present.
-
-##### Docker #####
-
-This watcher retrieves a list of [docker](http://www.docker.io/) containers via docker's [HTTP API](http://docs.docker.io/en/latest/reference/api/docker_remote_api/).
-It takes the following options:
-
-* `method`: docker
-* `servers`: a list of servers running docker as a daemon. Format is `{"name":"...", "host": "..."[, port: 4243]}`
-* `image_name`: find containers running this image
-* `container_port`: find containers forwarding this port
-* `check_interval`: how often to poll the docker API on each server. Default is 15s.
-
-##### AWS EC2 tags #####
-
-This watcher retrieves a list of Amazon EC2 instances that have a tag
-with particular value using the AWS API.
-It takes the following options:
-
-* `method`: ec2tag
-* `tag_name`: the name of the tag to inspect. As per the AWS docs,
-  this is case-sensitive.
-* `tag_value`: the value to match on. Case-sensitive.
-
-Additionally, you MUST supply `server_port_override` in the `haproxy`
-section of the configuration as this watcher does not know which port
-the backend service is listening on.
-
-The following options are optional, provided the well-known `AWS_`
-environment variables shown are set. If supplied, these options will
-be used in preference to the `AWS_` environment variables.
-
-* `aws_access_key_id`: AWS key or set `AWS_ACCESS_KEY_ID` in the environment.
-* `aws_secret_access_key`: AWS secret key or set `AWS_SECRET_ACCESS_KEY` in the environment.
-* `aws_region`: AWS region (i.e. `us-east-1`) or set `AWS_REGION` in the environment.
 
 ##### Marathon #####
 
@@ -399,7 +348,7 @@ Non-HTTP backends such as MySQL or RabbitMQ will obviously continue to need thei
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-### Creating a Service Watcher ###
+### Creating a Service Dicovery ###
 
-See the Service Watcher [README](lib/synapse/service_watcher/README.md) for
-how to add new Service Watchers.
+See the Service Discovery [README](src/synapse/discovery/README.md) for
+how to add new Service Discovery.

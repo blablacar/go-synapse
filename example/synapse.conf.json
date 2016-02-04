@@ -60,6 +60,7 @@
       "binary": "sudo",
       "arguments": ["service","haproxy","reload"]
     },
+    "state_file_path": "/tmp/synapse_haproxy.state.json",
     "config_file_path": "/etc/haproxy/haproxy.cfg",
     "socket_file_path": "/var/haproxy/stats.sock",
     "do_writes": true,
