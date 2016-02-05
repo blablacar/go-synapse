@@ -12,6 +12,7 @@ type SynapseService struct {
 	HAPServerOptions string
 	HAPListen []string
 	Discovery discovery.DiscoveryI
+	KeepDefaultServers bool
 	DefaultServers []SynapseServiceServerConfiguration
 }
 
@@ -39,6 +40,11 @@ func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceI
 	ss.HAPServerOptions = config.HAProxy.ServerOptions
 	ss.HAPListen = config.HAProxy.Listen
 	ss.DefaultServers = config.DefaultServers
+	if config.KeepDefaultServers {
+		ss.KeepDefaultServers = true
+	}else {
+		ss.KeepDefaultServers = false
+	}
 	var err error
 	ss.Discovery, err = discovery.CreateDiscovery(config.Discovery.Type, 1000, config.Discovery.Path, config.Discovery.Hosts)
 	if err != nil {

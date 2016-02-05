@@ -47,6 +47,7 @@ type SynapseServiceServerConfiguration struct {
 
 type SynapseServiceConfiguration struct {
 	Name string `json:"name"`
+	KeepDefaultServers bool `json:"keep_default_servers"`
 	DefaultServers []SynapseServiceServerConfiguration `json:"default_servers"`
 	Discovery SynapseServiceDiscoveryConfiguration `json:"discovery"`
 	HAProxy SynapseServiceHAProxyConfiguration `json:"haproxy"`

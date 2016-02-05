@@ -83,16 +83,6 @@ func(h *HAProxy) getAllBackends() HAProxyBackendSlice {
 		backend.Port = service.HAPPort
 		backend.ServerOptions = service.HAPServerOptions
 		backend.Listen = service.HAPListen
-		//Get All default servers to include
-		for _, server := range service.DefaultServers {
-			var hapServer HAProxyBackendServer
-			hapServer.Host = server.Host
-			hapServer.Port = server.Port
-			hapServer.Name = server.Name
-			hapServer.Disabled = false
-			hapServer.Weight = 0
-			backend.Servers = append(backend.Servers,hapServer)
-		}
 		//Get All dynamic servers to include
 		discoveredHosts := service.Discovery.GetDiscoveredHosts()
 		for _, server := range discoveredHosts {
@@ -105,8 +95,22 @@ func(h *HAProxy) getAllBackends() HAProxyBackendSlice {
 			hapServer.HAProxyServerOptions = server.HAProxyServerOptions
 			backend.Servers = append(backend.Servers,hapServer)
 		}
-		sort.Sort(backend.Servers)
-		backends = append(backends, backend)
+		//Get All default servers to include
+		if  service.KeepDefaultServers || len(backend.Servers) == 0 {
+			for _, server := range service.DefaultServers {
+				var hapServer HAProxyBackendServer
+				hapServer.Host = server.Host
+				hapServer.Port = server.Port
+				hapServer.Name = server.Name
+				hapServer.Disabled = false
+				hapServer.Weight = 0
+				backend.Servers = append(backend.Servers,hapServer)
+			}
+		}
+		if len(backend.Servers) > 0 {
+			sort.Sort(backend.Servers)
+			backends = append(backends, backend)
+		}
 	}
 	sort.Sort(backends)
 	return backends
