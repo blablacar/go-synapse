@@ -3,10 +3,10 @@
 Discoverys are the piece of GO-Synapse that watch an external service registry
 and reflect those changes in the local HAProxy state. Discoverys should conform
 to the interface specified by `DiscoveryI`.
-Your entries of BAckends list and state must be re-entrant, because the HAProxy
-Manager classe will use it to maintain HAProxy configuration.
+Your entries of Backends list and state must be re-entrant, because the HAProxy
+Manager classe will use it to manage HAProxy configuration.
 
-```ruby
+```go
 require "synapse/service_watcher/base"
 
 class Synapse::ServiceWatcher
@@ -35,9 +35,9 @@ class Synapse::ServiceWatcher
 end
 ```
 
-### Watcher Plugin Inteface
+### Discovery Plugin Inteface
 Synapse deduces both the class path and class name from the `method` key within
-the watcher configuration.  Every watcher is passed configuration with the
+the watcher configuration.  Every discovery is passed configuration with the
 `method` key, e.g. `zookeeper` or `ec2tag`.
 
 #### Class Location

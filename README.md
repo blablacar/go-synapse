@@ -154,34 +154,30 @@ Each value in the services hash is also a hash, and should contain the following
 <a name="discovery"/>
 #### Service Discovery ####
 
-We've included a number of `watchers` which provide service discovery.
+We've included a number of `discoverys` which provide service discovery.
 Put these into the `discovery` section of the service hash, with these options:
 
 ##### Base #####
 
-The base watcher is useful in situations where you only want to use the servers in the `default_servers` list.
+The base discovery is useful in situations where you only want to use the servers in the `default_servers` list.
 It has only one option:
 
 * `method`: base
 
 ##### Zookeeper #####
 
-This watcher retrieves a list of servers from zookeeper.
+This discovery retrieves a list of servers from zookeeper.
 It takes the following mandatory arguments:
 
 * `method`: zookeeper
 * `path`: the zookeeper path where ephemeral nodes will be created for each available service server
 * `hosts`: the list of zookeeper servers to query
 
-The watcher assumes that each node under `path` represents a service server.
-
-The following arguments are optional:
-
-* `decode`: A hash containing configuration for how to decode the data found in zookeeper.
+The discovery assumes that each node under `path` represents a service server.
 
 ##### Marathon #####
 
-This watcher polls the Marathon API and retrieves a list of instances for a
+This discovery polls the Marathon API and retrieves a list of instances for a
 given application.
 
 It takes the following options:
@@ -205,10 +201,6 @@ In that case, the service proxy will be created with the servers listed here.
 If you do not list any default servers, no proxy will be created.  The
 `default_servers` will also be used in addition to discovered servers if the
 `keep_default_servers` option is set.
-
-If you do not list any `default_servers`, and all backends for a service
-disappear then the previous known backends will be used.  Disable this behavior
-by unsetting `use_previous_backends`.
 
 <a name="haproxysvc"/>
 #### The `haproxy` Section ####
@@ -251,16 +243,6 @@ The top level `haproxy` section of the config file has the following options:
 
 Note that a non-default `bind_address` can be dangerous.
 If you configure an `address:port` combination that is already in use on the system, haproxy will fail to start.
-
-<a name="file"/>
-### Configuring `file_output` ###
-
-This section controls whether or not synapse will write out service state
-to the filesystem in json format. This can be used for services that want to
-use discovery information but not go through HAProxy.
-
-* `output_directory`: the path to a directory on disk that service registrations
-should be written to.
 
 
 ### HAProxy shared HTTP Frontend ###
