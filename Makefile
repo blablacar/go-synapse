@@ -14,6 +14,9 @@ build:
 	$(GOMCMD) build -ldflags "-X main.BuildTime `date -u '+%Y-%m-%d_%H:%M:%S_UTC'` -X main.Version `cat VERSION.txt`-`git rev-parse HEAD`" synapse/synapse
 	mv synapse bin/.
 
+test:
+	$(GOMCMD) test synapse
+
 clean:
 	rm -f bin/*
 	rm -rf _vendor

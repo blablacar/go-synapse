@@ -118,7 +118,9 @@ If you have a GNU Make or equivalent on your system, you can also use it to buil
 
 	`make dep-install` # Will install all go dependencies into _vendor directory
 
-	`make build` # Will compile nerve binary and push it into local bin/ diretory
+	`make build` # Will compile nerve binary and push it into local bin/ directory
+	
+	`make test` # Will execute all units tests
 
 	`make install` # Will install nerve binary in the system directory /usr/local/bin (can be overriden at the top of the Makefile)
 
