@@ -15,6 +15,7 @@ type zookeeperDiscovery struct {
 	ZKHosts []string
 	ZKPath string
 	ZKConnection *zk.Conn
+	ZKConnEvent <-chan zk.Event
 	destroySignal chan bool
 	waitGroup sync.WaitGroup
 }
@@ -53,13 +54,13 @@ func(zd *zookeeperDiscovery) Connect() (zk.State, error) {
 			}
 		}
 	}
-	conn, _, err := zk.Connect(zd.ZKHosts, time.Second)
+	var err error
+	zd.ZKConnection, zd.ZKConnEvent, err = zk.Connect(zd.ZKHosts, time.Second)
 	if err != nil {
 		zd.ZKConnection = nil
 		log.Warn("Unable to Connect to ZooKeeper (",err,")")
 		return zk.StateDisconnected, err
 	}
-	zd.ZKConnection = conn
 	state := zd.ZKConnection.State()
 	return state, nil
 }
@@ -202,6 +203,13 @@ func(zd *zookeeperDiscovery) Run(stop <-chan bool) error {
 				case <-watchChildsRoutine:
 					log.Warn("Watch Childs Routine down - Restarting the whole Discovery Process")
 					zd.Destroy()
+					break StopLoop
+				case ev := <-zd.ZKConnEvent:
+					log.WithError(ev.Err).Warn("Connection problem... Restarting it")
+					err := zd.destroyTwoLoop()
+					if err != nil {
+						log.WithError(err).Warn("Problem closing all connections")
+					}
 					break StopLoop
 				default:
 					time.Sleep(500 * time.Millisecond)
