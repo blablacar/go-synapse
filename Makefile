@@ -5,7 +5,7 @@
 
 GOMCMD=gom
 
-all: dep-install build
+all: dep-install build test
 
 dep-install:
 	$(GOMCMD) install
