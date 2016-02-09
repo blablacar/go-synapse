@@ -182,9 +182,9 @@ func(h *HAProxy) SaveConfiguration() error {
 			data += "  " + line + "\n"
 		}
 		data += "\n"
-	// Backend Section
+	// Listen Section
 		for _, backend := range h.Backends {
-			data += "backend " + backend.Name + "\n"
+			data += "listen " + backend.Name + "\n"
 			data += "  bind localhost:" + strconv.Itoa(backend.Port) + "\n"
 			for _, line := range backend.Listen {
 				data += "  " + line + "\n"
