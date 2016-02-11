@@ -150,7 +150,6 @@ func(zd *zookeeperDiscovery) updateDiscoveredHosts(HostList []string) error {
 		zd.Hosts = nil
 	}
 	for _, host := range HostList {
-		log.Debug("Checking for [",host,"] as discovered")
 		exist, _, err := zd.ZKConnection.Exists(zd.ZKPath+"/"+host)
 		if err != nil {
 			log.WithError(err).Warn("Unable to know if node exist or not [",zd.ZKPath+"/"+host,"]")
@@ -186,6 +185,7 @@ func(zd *zookeeperDiscovery) InitializeDiscovery(updateHostSignal chan bool, wat
 		log.Warn("Unable to Discover... Connection to Zookeeper Fail")
 		return err
 	}
+	//Put a time to wait for connection to be established
 	time.Sleep(3*time.Second)
 	state = zd.ZKConnection.State()
 	if state == zk.StateHasSession {
@@ -206,35 +206,37 @@ func(zd *zookeeperDiscovery) InitializeDiscovery(updateHostSignal chan bool, wat
 			zd.waitGroup.Add(1)
 		//Second create a subscription to any change on the path
 			snapshots, errors := zd.WatchForChildren(watchChildsSignal)
-			go func() {
-				for {
-					select {
-					case snapshot := <-snapshots:
-						//Here, we need to update Hosts lists
-						log.Debug("Snaphost received, update Discovered Hosts List")
-						zd.updateDiscoveredHosts(snapshot)
-					case err := <-errors:
-						//Will stop the discovery process
-						//Perhaps need a better error management
-						//But until a fully tested case, will exit now!
-						log.WithError(err).Warn("Zookeeper Discovery has an error, Exiting")
-						updateHostSignal <- true
-						return
-					case signal := <-zd.destroySignal:
-						//stopping the loop, time to leave!
-						if signal {
-							log.Info("Kill signal receive in Zookeeper Discovery")
-						}else {
-							log.Warn("Kill signal receive in Zookeeper Discovery, but ?? False ??")
-						}
-						updateHostSignal <- true
-						return
-					}
-				}
-			}()
+			go zd.watchSignals(snapshots,errors,updateHostSignal)
 		}
 	}
 	return nil
+}
+
+func(zd *zookeeperDiscovery) watchSignals(snapshots chan []string, errors chan error, updateHostSignal chan bool) {
+	for {
+		select {
+		case snapshot := <-snapshots:
+			//Here, we need to update Hosts lists
+			log.Debug("Snaphost received, update Discovered Hosts List")
+			zd.updateDiscoveredHosts(snapshot)
+		case err := <-errors:
+			//Will stop the discovery process
+			//Perhaps need a better error management
+			//But until a fully tested case, will exit now!
+			log.WithError(err).Warn("Zookeeper Discovery has an error, Exiting")
+			updateHostSignal <- true
+			return
+		case signal := <-zd.destroySignal:
+			//stopping the loop, time to leave!
+			if signal {
+				log.Info("Kill signal receive in Zookeeper Discovery")
+			}else {
+				log.Warn("Kill signal receive in Zookeeper Discovery, but ?? False ??")
+			}
+			updateHostSignal <- true
+			return
+		}
+	}
 }
 
 func(zd *zookeeperDiscovery) Run(stop <-chan bool) error {
