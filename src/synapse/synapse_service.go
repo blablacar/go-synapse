@@ -30,7 +30,7 @@ func(ss *SynapseService) Run(stop <-chan bool) error {
 			time.Sleep(time.Second)
 		}
 	}
-	ss.Discovery.Destroy()
+	ss.Discovery.WaitTermination()
 	return nil
 }
 

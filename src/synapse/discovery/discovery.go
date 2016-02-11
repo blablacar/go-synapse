@@ -7,6 +7,7 @@ import (
 )
 
 type DiscoveredHost struct {
+	ZKHostName string
 	Name string `json:"name"`
 	Host string `json:"host"`
 	Port int `json:"port"`
@@ -28,6 +29,7 @@ type DiscoveryI interface {
 	GetDiscoveredHosts() []DiscoveredHost
 	Run(stop <-chan bool) error
 	Destroy() error
+	WaitTermination()
 }
 
 // Create a Discovery object

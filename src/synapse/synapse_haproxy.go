@@ -269,6 +269,7 @@ func(h *HAProxy) changeBackendsStateBySocket(commands []string) error {
 }
 
 func(h *HAProxy) Run(stop <-chan bool) {
+	log.Debug("Starting HAProxy Run routine")
 	defer servicesWaitGroup.Done()
 	//First Run, load first backends state from StateFile
 	err := h.LoadState()
