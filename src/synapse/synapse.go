@@ -10,11 +10,11 @@ import (
 var closeSynapseChan chan bool
 var servicesWaitGroup sync.WaitGroup
 
-func createServices(config SynapseConfiguration) ([]SynapseService, error) {
+func createServices(config SynapseConfiguration,servicesModified chan bool) ([]SynapseService, error) {
 	var services []SynapseService
 	if len(config.Services) > 0 {
 		for i:=0; i < len(config.Services); i++ {
-			service, err := CreateService(config.Services[i],config.InstanceID)
+			service, err := CreateService(config.Services[i],config.InstanceID,servicesModified)
 			if err != nil {
 				log.Warn("Error when creating a service (",err,")")
 				return services, err
@@ -30,7 +30,8 @@ func createServices(config SynapseConfiguration) ([]SynapseService, error) {
 
 func Run(stop <-chan bool,finished chan<-bool, synapseConfig SynapseConfiguration) {
 	log.Debug("Synapse: Run function started")
-	services , err := createServices(synapseConfig)
+	servicesModified := make(chan bool)
+	services , err := createServices(synapseConfig,servicesModified)
 	if err != nil {
 		log.WithError(err).Warn("Services initiliazation failed, exiting")
 		finished <- false
@@ -41,10 +42,10 @@ func Run(stop <-chan bool,finished chan<-bool, synapseConfig SynapseConfiguratio
 		for i := 0; i < len(services); i++ {
 			go services[i].Run(stopper)
 		}
-		//Start HAProxy Management Routine
-		var haproxy HAProxy
-		haproxy.Initialize(synapseConfig.HAProxy,services,"/tmp/synapse_backend.state",0)
-		go haproxy.Run(stopper)
+		//Start Output Management Routine
+		var output SynapseOutput
+		output.Initialize(synapseConfig.Output,services)
+		go output.Run(stopper,servicesModified)
 
 		// Wait for the stop signal
 		Loop:

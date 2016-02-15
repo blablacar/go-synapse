@@ -24,17 +24,20 @@ func(ss *SynapseService) Run(stop <-chan bool) error {
 	for {
 		select {
 		case <-stop:
+			log.Debug("SynapseService [",ss.Name,"] Stop Signal Received")
 			stopDiscovery <- true
 			break Loop
 		default:
 			time.Sleep(time.Second)
 		}
 	}
+	log.Debug("SynapseService [",ss.Name,"] wait for Termination")
 	ss.Discovery.WaitTermination()
+	log.Debug("SynapseService [",ss.Name,"] terminated")
 	return nil
 }
 
-func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceID string) error {
+func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceID string,serviceModified chan bool) error {
 	ss.Name = config.Name
 	ss.HAPPort = config.HAProxy.Port
 	ss.HAPServerOptions = config.HAProxy.ServerOptions
@@ -46,7 +49,7 @@ func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceI
 		ss.KeepDefaultServers = false
 	}
 	var err error
-	ss.Discovery, err = discovery.CreateDiscovery(config.Discovery.Type, 1000, config.Discovery.Path, config.Discovery.Hosts)
+	ss.Discovery, err = discovery.CreateDiscovery(config.Discovery.Type, 1000, config.Discovery.Path, config.Discovery.Hosts, serviceModified)
 	if err != nil {
 		log.WithError(err).Warn("Synapse Service [",ss.Name,"] Initilization fail")
 		return err
@@ -54,9 +57,9 @@ func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceI
 	return nil
 }
 
-func CreateService(config SynapseServiceConfiguration,InstanceID string) (*SynapseService, error) {
+func CreateService(config SynapseServiceConfiguration,InstanceID string,serviceModified chan bool) (*SynapseService, error) {
         var service SynapseService
-        err := service.Initialize(config,InstanceID)
+        err := service.Initialize(config,InstanceID,serviceModified)
         if err != nil {
                 log.WithError(err).Warn("Error Creating Service [",service.Name,"]")
 		return nil, err

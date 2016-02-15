@@ -75,6 +75,7 @@ func(zd *zookeeperDiscovery) watchLoop(snapshots chan []string, error_chan chan 
 			watchChildsSignal <- true
 			return
 		}
+		snapshots <-snapshot
 		var event zk.Event
 		select {
 		case event = <-events:
@@ -82,8 +83,6 @@ func(zd *zookeeperDiscovery) watchLoop(snapshots chan []string, error_chan chan 
 				error_chan <- errors.New("ZK Connection is closed")
 				watchChildsSignal <- true
 				return
-			}else {
-				snapshots <-snapshot
 			}
 			log.Debug("Zookeeper Discovery: New Event Receive from [",zd.ZKPath,"] type [",event.Type,"] State [",event.State,"]")
 		case signal := <-zd.destroySignal:
@@ -92,7 +91,6 @@ func(zd *zookeeperDiscovery) watchLoop(snapshots chan []string, error_chan chan 
 			}else {
 				log.Warn("Kill signal receive in Zookeeper Discovery Watch, but ?? False ??")
 			}
-			watchChildsSignal <- true
 			return
 		}
 		if event.Err != nil {
@@ -109,11 +107,12 @@ func(zd *zookeeperDiscovery) watchLoop(snapshots chan []string, error_chan chan 
 func(zd *zookeeperDiscovery) WatchForChildren(watchChildsSignal chan bool) (chan []string, chan error) {
 	snapshots := make(chan []string)
 	error_chan := make(chan error)
+	zd.waitGroup.Add(1)
 	go zd.watchLoop(snapshots,error_chan,watchChildsSignal)
 	return snapshots, error_chan
 }
 
-func(zd *zookeeperDiscovery) addNewDicoveredHost(host string) error {
+func(zd *zookeeperDiscovery) addNewDicoveredHost(hostList *[]DiscoveredHost,host string) error {
 	data, _, err := zd.ZKConnection.Get(zd.ZKPath+"/"+host)
 	if err != nil {
 		log.WithError(err).Warn("Unable to get data info for node [",zd.ZKPath+"/"+host,"]")
@@ -125,9 +124,10 @@ func(zd *zookeeperDiscovery) addNewDicoveredHost(host string) error {
 	if err != nil {
 		// If there is an error in decoding the JSON entry into configuration object, print the error and continue
 		log.WithError(err).Warn("Unable to Parse JSON data for node [",zd.ZKPath+"/"+host,"]")
+		return err
 	}else {
 		discoveredHost.ZKHostName = host
-		zd.Hosts = append(zd.Hosts,discoveredHost)
+		*hostList = append(*hostList,discoveredHost)
 	}
 	return nil
 }
@@ -135,49 +135,23 @@ func(zd *zookeeperDiscovery) addNewDicoveredHost(host string) error {
 func(zd *zookeeperDiscovery) updateDiscoveredHosts(HostList []string) error {
 	log.Debug("updateDiscoveredHosts - [",len(HostList),"] Hosts modified")
 	if len(HostList) == 0 {
-		//Something changed, but did not have any snapshots...
-		//Grab all active nodes
-		tmpHostList, stats, err := zd.ZKConnection.Children(zd.ZKPath)
-		HostList = tmpHostList
-		if err != nil {
-			log.WithError(err).Warn("Zookeeper Discovery: Full Check of childs for [",zd.ZKPath,"] failed, exiting")
-			return err
+		if len(zd.Hosts) > 0 {
+			//We can empty the Node List
+			zd.Hosts = nil
+			zd.serviceModified <- true
 		}
-		if stats.NumChildren == 0 {
-			return nil
+	}else {
+		var newHost []DiscoveredHost
+		for _, host := range HostList {
+			zd.addNewDicoveredHost(&newHost, host)
 		}
-		//Empty Hosts List, because we grab everyhting
-		zd.Hosts = nil
-	}
-	for _, host := range HostList {
-		exist, _, err := zd.ZKConnection.Exists(zd.ZKPath+"/"+host)
-		if err != nil {
-			log.WithError(err).Warn("Unable to know if node exist or not [",zd.ZKPath+"/"+host,"]")
-			return err
-		}
-		if exist {
-			log.Debug("Add New Host [",host,"]")
-			return zd.addNewDicoveredHost(host)
-		}else {
-			log.Debug("Remove Host [",host,"]")
-			return zd.removeDiscoveredHost(host)
-		}
-	}
-	return nil
-}
-
-func(zd *zookeeperDiscovery) removeDiscoveredHost(host string) error {
-	for index, zdHost := range zd.Hosts {
-		if zdHost.ZKHostName == host {
-			zd.Hosts = append(zd.Hosts[:index],zd.Hosts[index+1:]...)
-		}
+		zd.Hosts = newHost
+		zd.serviceModified <- true
 	}
 	return nil
 }
 
 func(zd *zookeeperDiscovery) InitializeDiscovery(updateHostSignal chan bool, watchChildsSignal chan bool) error {
-	zd.waitGroup.Add(1)
-	defer zd.waitGroup.Done()
 	//Test Connection to ZooKeeper
 	state, err := zd.Connect() //internally the connection is maintained
 	log.Debug("ZK Connection State After Connect [",state,"]")
@@ -203,9 +177,9 @@ func(zd *zookeeperDiscovery) InitializeDiscovery(updateHostSignal chan bool, wat
 					log.WithError(err).Warn("Zookeeper Discovery: Failed to grap all children info of [",zd.ZKPath,"]")
 				}
 			}
-			zd.waitGroup.Add(1)
 		//Second create a subscription to any change on the path
 			snapshots, errors := zd.WatchForChildren(watchChildsSignal)
+			zd.waitGroup.Add(1)
 			go zd.watchSignals(snapshots,errors,updateHostSignal)
 		}
 	}
@@ -213,6 +187,7 @@ func(zd *zookeeperDiscovery) InitializeDiscovery(updateHostSignal chan bool, wat
 }
 
 func(zd *zookeeperDiscovery) watchSignals(snapshots chan []string, errors chan error, updateHostSignal chan bool) {
+	defer zd.waitGroup.Done()
 	for {
 		select {
 		case snapshot := <-snapshots:
@@ -233,7 +208,6 @@ func(zd *zookeeperDiscovery) watchSignals(snapshots chan []string, errors chan e
 			}else {
 				log.Warn("Kill signal receive in Zookeeper Discovery, but ?? False ??")
 			}
-			updateHostSignal <- true
 			return
 		}
 	}
@@ -294,16 +268,19 @@ func(zd *zookeeperDiscovery) destroyOneLoop() error {
 
 func(zd *zookeeperDiscovery) Destroy() error {
 	//Wait for all thread to terminate
+	log.Debug("Wait for all discovery process for [",zd.Type,"] to quit")
 	zd.waitGroup.Wait()
 	//Close properly the connection to Zookeeper
 	if zd.ZKConnection != nil {
 		zd.ZKConnection.Close()
 		zd.ZKConnection = nil
 	}
+	log.Debug("All discovery processes for [",zd.Type,"] exited")
 	return nil
 }
 
 func(zd *zookeeperDiscovery) WaitTermination() {
+	log.Debug("Wait Termination for [",zd.Type,"] to quit")
 	zd.waitGroup.Wait()
 }
 

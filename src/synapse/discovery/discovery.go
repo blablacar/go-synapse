@@ -21,6 +21,7 @@ type Discovery struct {
 	Type string
 	ConnectTimeout int
 	Hosts []DiscoveredHost
+	serviceModified chan bool
 }
 
 type DiscoveryI interface {
@@ -37,13 +38,14 @@ type DiscoveryI interface {
 // if Type == zookeeper
 //      param1 is the path to watch for
 //      param2 are the zk nodes to connect to
-func CreateDiscovery(Type string, ConnectTimeout int, param1 string, param2 []string) (DiscoveryI, error) {
+func CreateDiscovery(Type string, ConnectTimeout int, param1 string, param2 []string, serviceModified chan bool) (DiscoveryI, error) {
 	var discovery DiscoveryI
         switch (strings.ToUpper(Type)) {
                 case DISCOVERY_ZOOKEEPER_TYPE:
                         zookeeper_discovery := new(zookeeperDiscovery)
 			zookeeper_discovery.Initialize()
 			zookeeper_discovery.SetZKConfiguration(param2,param1)
+			zookeeper_discovery.serviceModified = serviceModified
 			discovery = zookeeper_discovery
                 default:
 			err := errors.New("Unknown discovery type")

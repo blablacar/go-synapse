@@ -15,16 +15,21 @@ type SynapseCommandHAProxyConfiguration struct {
 	Arguments []string `json:"arguments"`
 }
 
-type SynapseHAProxyConfiguration struct {
+type SynapseOutputConfiguration struct {
+	Type string `json:"type"`
+	OutputFilePath string `json:"output_file_path"`
 	ReloadCommand SynapseCommandHAProxyConfiguration `json:"reload_command"`
 	ConfigFilePath string `json:"config_file_path"`
 	SocketFilePath string `json:"socket_file_path"`
+	StateFilePath string `json:"state_file_path"`
+	StateFileTTL int `json:"state_file_ttl"`
 	DoWrites bool `json:"do_writes"`
 	DoReloads bool `json:"do_reloads"`
 	DoSocket bool `json:"do_socket"`
 	Global []string `json:"global"`
 	Defaults []string `json:"defaults"`
 	ExtraSections []SynapseExtraSectionConfiguration `json:"extra_sections"`
+	RestartInterval int `json:"restart_interval"`
 }
 
 type SynapseServiceHAProxyConfiguration struct {
@@ -57,7 +62,7 @@ type SynapseConfiguration struct {
 	InstanceID string `json:"instance_id"`
 	LogLevel string `json:"log-level"`
 	Services []SynapseServiceConfiguration `json:"services"`
-	HAProxy SynapseHAProxyConfiguration `json:"haproxy"`
+	Output SynapseOutputConfiguration `json:"output"`
 }
 
 // Open Synapse configuration file, and parse it's JSON content

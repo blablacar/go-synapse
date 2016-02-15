@@ -1,4 +1,4 @@
-package synapse
+package output
 
 import (
 	log "github.com/Sirupsen/logrus"
@@ -7,39 +7,70 @@ import (
 	"time"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"errors"
+	"sync"
 	"net"
 )
 
-type HAProxy struct {
-	Configuration SynapseHAProxyConfiguration
-	Backends HAProxyBackendSlice
-	Services []SynapseService
-	StateFile string
+type HAProxyOutput struct {
+	Output
+	DoWrites bool
+	DoReloads bool
+	DoSocket bool
+	Global []string
+	Defaults []string
+	ConfigFilePath string
+	ReloadCommandBinary string
+	ReloadCommandArguments []string
+	SocketFilePath string
 	WriteInterval int
+	StateFile string
+	StateTTL int
+	waitGroup sync.WaitGroup
 }
 
-func(h *HAProxy) Initialize(conf SynapseHAProxyConfiguration, Services []SynapseService, StateFile string, WriteInterval int) {
-	h.Configuration = conf
-	h.Services = Services
-	h.StateFile = StateFile
-	if WriteInterval > 0 {
-		h.WriteInterval = WriteInterval
-	}else {
-		//1 second
-		h.WriteInterval = 1000
+func(h *HAProxyOutput) SetConfiguration(
+	DoWrites bool,
+	DoReloads bool,
+	DoSocket bool,
+	Global []string,
+	Defaults []string,
+	ConfigFilePath string,
+	ReloadCommandBinary string,
+	ReloadCommandArguments []string,
+	SocketFilePath string,
+	WriteInterval int,
+	StateFile string,
+	StateTTL int) {
+
+	h.DoWrites = DoWrites
+	h.DoReloads = DoReloads
+	h.DoSocket = DoSocket
+	if len(Global) > 0 {
+		h.Global = Global
 	}
+	if len(Defaults) > 0 {
+		h.Defaults = Defaults
+	}
+	h.ConfigFilePath = ConfigFilePath
+	h.ReloadCommandBinary = ReloadCommandBinary
+	if len(ReloadCommandArguments) > 0 {
+		h.ReloadCommandArguments = ReloadCommandArguments
+	}
+	h.SocketFilePath = SocketFilePath
+	h.WriteInterval = WriteInterval
+	h.StateFile = StateFile
+	h.StateTTL = StateTTL
 }
 
-func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,[]string,error) {
+func(h *HAProxyOutput) isBackendsModified(newBackends OutputBackendSlice) (bool,bool,[]string,error) {
 	isModified := false
 	hasToRestart := false
 	var socketCommands []string
 	//Compare current and new Backends (and all associated states)
-	if len(newBackends) != len(h.Services) {
-		err := errors.New("[" + strconv.Itoa(len(newBackends)) + "] Backends to watch != [" + strconv.Itoa(len(h.Services)) + "] Services")
+	if len(newBackends) != len(h.Backends) {
+		err := errors.New("[" + strconv.Itoa(len(newBackends)) + "] Backends to watch != [" + strconv.Itoa(len(h.Backends)) + "] Backends")
 		return isModified, hasToRestart, socketCommands, err
 	}else {
 		if len(newBackends) == len(h.Backends) {
@@ -75,49 +106,8 @@ func(h *HAProxy) isBackendsModified(newBackends HAProxyBackendSlice) (bool,bool,
 	return isModified, hasToRestart, socketCommands, nil
 }
 
-func(h *HAProxy) getAllBackends() HAProxyBackendSlice {
-	var backends HAProxyBackendSlice
-	for _, service := range h.Services {
-		var backend HAProxyBackend
-		backend.Name = service.Name
-		backend.Port = service.HAPPort
-		backend.ServerOptions = service.HAPServerOptions
-		backend.Listen = service.HAPListen
-		//Get All dynamic servers to include
-		discoveredHosts := service.Discovery.GetDiscoveredHosts()
-		for _, server := range discoveredHosts {
-			var hapServer HAProxyBackendServer
-			hapServer.Host = server.Host
-			hapServer.Port = server.Port
-			hapServer.Name = server.Name
-			hapServer.Disabled = server.Maintenance
-			hapServer.Weight = server.Weight
-			hapServer.HAProxyServerOptions = server.HAProxyServerOptions
-			backend.Servers = append(backend.Servers,hapServer)
-		}
-		//Get All default servers to include
-		if  service.KeepDefaultServers || len(backend.Servers) == 0 {
-			for _, server := range service.DefaultServers {
-				var hapServer HAProxyBackendServer
-				hapServer.Host = server.Host
-				hapServer.Port = server.Port
-				hapServer.Name = server.Name
-				hapServer.Disabled = false
-				hapServer.Weight = 0
-				backend.Servers = append(backend.Servers,hapServer)
-			}
-		}
-		if len(backend.Servers) > 0 {
-			sort.Sort(backend.Servers)
-			backends = append(backends, backend)
-		}
-	}
-	sort.Sort(backends)
-	return backends
-}
-
 //Save the current state of all Backends to StateFile
-func(h *HAProxy) SaveState() error {
+func(h *HAProxyOutput) SaveState() error {
 	data, err := json.Marshal(h.Backends)
 	if err != nil {
 		log.WithError(err).Warn("Unable to Marchal in JSON Backends State")
@@ -132,12 +122,11 @@ func(h *HAProxy) SaveState() error {
 }
 
 //Load the current state of all Backends from StateFile
-func(h *HAProxy) LoadState() error {
+func(h *HAProxyOutput) LoadState() error {
 	if stat, err := os.Stat(h.StateFile); err == nil {
 		fileModTime := stat.ModTime()
 		now := time.Now()
-		ttl := 2000
-		expirationDate := fileModTime.Add(time.Duration(ttl) * time.Millisecond)
+		expirationDate := fileModTime.Add(time.Duration(h.StateTTL) * time.Millisecond)
 		if expirationDate.Before(now) {
 			log.Debug("State File exists, but is expired")
 			return nil
@@ -163,8 +152,8 @@ func(h *HAProxy) LoadState() error {
 	return nil
 }
 
-func(h *HAProxy) SaveConfiguration() error {
-	if h.Configuration.DoWrites {
+func(h *HAProxyOutput) SaveConfiguration() error {
+	if h.DoWrites {
 		var data string
 	// Write Header
 		data = "#\n"
@@ -173,12 +162,12 @@ func(h *HAProxy) SaveConfiguration() error {
 		data += "#\n\n"
 	// Global Section
 		data += "global\n"
-		for _, line := range h.Configuration.Global {
+		for _, line := range h.Global {
 			data += "  " + line + "\n"
 		}
 	// Defaults Section
 		data += "\ndefaults\n"
-		for _, line := range h.Configuration.Defaults {
+		for _, line := range h.Defaults {
 			data += "  " + line + "\n"
 		}
 		data += "\n"
@@ -205,22 +194,23 @@ func(h *HAProxy) SaveConfiguration() error {
 			}
 			data += "\n"
 		}
-		err := ioutil.WriteFile(h.Configuration.ConfigFilePath,[]byte(data),0644)
+		err := ioutil.WriteFile(h.ConfigFilePath,[]byte(data),0644)
 		if err != nil {
-			log.WithField("Filename",h.Configuration.ConfigFilePath).WithError(err).Warn("Unable to Write HAProxy Configuration File")
+			log.WithField("Filename",h.ConfigFilePath).WithError(err).Warn("Unable to Write HAProxy Configuration File")
 			return err
 		}
+		log.Debug("Configuration File [",h.ConfigFilePath,"] of HAProxy output written")
 	}else {
 		log.Debug("Do not execute Write modified configuration cause of do_writes flag set to false")
 	}
 	return nil
 }
 
-func(h *HAProxy) reloadHAProxyDaemon() error {
-	if h.Configuration.DoReloads {
+func(h *HAProxyOutput) reloadHAProxyDaemon() error {
+	if h.DoReloads {
 		var command exec.Cmd
-		command.Path = h.Configuration.ReloadCommand.Binary
-		command.Args = h.Configuration.ReloadCommand.Arguments
+		command.Path = h.ReloadCommandBinary
+		command.Args = h.ReloadCommandArguments
 		err := command.Run()
 		if err != nil {
 			log.WithError(err).Warn("HAProxy reloading failed")
@@ -232,10 +222,10 @@ func(h *HAProxy) reloadHAProxyDaemon() error {
 	return nil
 }
 
-func(h *HAProxy) changeBackendsStateBySocket(commands []string) error {
-	if h.Configuration.DoSocket {
+func(h *HAProxyOutput) changeBackendsStateBySocket(commands []string) error {
+	if h.DoSocket {
 		//Send all command to socket
-		conn, err := net.Dial("unix",h.Configuration.SocketFilePath)
+		conn, err := net.Dial("unix",h.SocketFilePath)
 		if err != nil {
 			log.WithError(err).Warn("Unable to open HAProxy socket to send new backend state")
 			return err
@@ -268,64 +258,76 @@ func(h *HAProxy) changeBackendsStateBySocket(commands []string) error {
 	return nil
 }
 
-func(h *HAProxy) Run(stop <-chan bool) {
+func(h *HAProxyOutput) doWork(backends OutputBackendSlice) {
+	isModified, hasToRestart, socketCommands, err := h.isBackendsModified(backends)
+	if err != nil {
+		log.WithError(err).Warn("Error in modification since last check")
+		log.Warn("Pretending there's no modification, to keep last valid state informations")
+	}else {
+		if isModified {
+			log.Debug("Backends Configuration modified")
+			//Save the new Backend State
+			h.Backends = backends
+			if h.StateFile != "" {
+				h.SaveState()
+			}
+			//Write the new Configuration file
+			err = h.SaveConfiguration()
+			if err != nil {
+				log.WithError(err).Warn("Unable to Save HAProxy Configuration File")
+			}else {
+				if hasToRestart {
+					//Let's reload the main HAProxy process
+					h.reloadHAProxyDaemon()
+				}else {
+					if h.DoReloads && !h.DoSocket {
+						//HAProxy backend state modification by socket forbid by conf
+						//So reload the modifications by restarting the daemon
+						h.reloadHAProxyDaemon()
+					}else {
+						//Send command to haproxy using the control socket
+						err = h.changeBackendsStateBySocket(socketCommands)
+						if err != nil {
+							h.reloadHAProxyDaemon()
+						}
+					}
+				}
+			}
+		}else {
+			log.Debug("No modification since last check, nothing to do")
+		}
+	}
+}
+
+func(h *HAProxyOutput) Run(obs_chan chan OutputBackendSlice) {
 	log.Debug("Starting HAProxy Run routine")
-	defer servicesWaitGroup.Done()
-	//First Run, load first backends state from StateFile
+	defer h.waitGroup.Done()
+	Loop:
+	for {
+		select {
+		case <-h.Stopper:
+			break Loop
+		case obs := <-obs_chan:
+			h.doWork(obs)
+		}
+	}
+	log.Warn("HAProxy Management Routine stopped")
+}
+
+func(h *HAProxyOutput) Initialize() {
 	err := h.LoadState()
 	if err != nil {
 		log.WithError(err).Warn("Unable to load Backends State from file")
 		log.Warn("Starting with an empty State")
 	}
-	//Now the main loop
-	Loop:
-	for {
-		//First Get all backends info
-		backends := h.getAllBackends()
-		isModified, hasToRestart, socketCommands, err := h.isBackendsModified(backends)
-		if err != nil {
-			log.WithError(err).Warn("Error in modification since last check")
-			log.Warn("Pretending there's no modification, to keep last valid state informations")
-		}else {
-			if isModified {
-				log.Debug("Backends Configuration modified")
-				//Save the new Backend State
-				h.Backends = backends
-				if h.StateFile != "" {
-					h.SaveState()
-				}
-				//Write the new Configuration file
-				err = h.SaveConfiguration()
-				if err != nil {
-					log.WithError(err).Warn("Unable to Save HAProxy Configuration File")
-				}else {
-					if hasToRestart {
-						//Let's reload the main HAProxy process
-						h.reloadHAProxyDaemon()
-					}else {
-						if h.Configuration.DoReloads && !h.Configuration.DoSocket {
-							//HAProxy backend state modification by socket forbid by conf
-							//So reload the modifications by restarting the daemon
-							h.reloadHAProxyDaemon()
-						}else {
-							//Send command to haproxy using the control socket
-							err = h.changeBackendsStateBySocket(socketCommands)
-							if err != nil {
-								h.reloadHAProxyDaemon()
-							}
-						}
-					}
-				}
-			}else {
-				log.Debug("No modification since last check, nothing to do")
-			}
-		}
-		select {
-		case <-stop:
-			break Loop
-		default:
-			time.Sleep(time.Duration(h.WriteInterval) * time.Millisecond)
-		}
-	}
-	log.Warn("HAProxy Management Routine stopped")
+	h.Stopper = make(chan bool)
+	h.waitGroup.Add(1)
+}
+
+func(h *HAProxyOutput) Stop() {
+	h.Stopper <- true
+}
+
+func(h *HAProxyOutput) WaitTermination() {
+	h.waitGroup.Wait()
 }
