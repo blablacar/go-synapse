@@ -13,9 +13,11 @@
       ],
       "discovery": {
         "method": "zookeeper",
-        "path": "/services/service1",
+        "path": "/nerve/services/smtp/services",
         "hosts": [
-          "localhost:2181"
+          "192.168.0.2:2181",
+          "192.168.0.3:2181",
+          "192.168.0.4:2181"
         ]
       },
       "haproxy": {
@@ -27,7 +29,6 @@
           "http-check expect string OK"
         ]
       }
-      
     },
     {
       "name":"service2",
@@ -53,9 +54,9 @@
           "option httpchk /health"
         ]
       }
-    }
   ],
-  "haproxy": {
+  "output": {
+    "type": "haproxy",
     "reload_command": {
       "binary": "sudo",
       "arguments": ["service","haproxy","reload"]
