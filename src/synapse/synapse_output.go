@@ -61,11 +61,12 @@ func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) 
 		config.SocketFilePath,
 		config.RestartInterval,
 		config.StateFilePath,
-		config.StateFileTTL)
+		config.StateFileTTL,
+		config.BindAddress)
 }
 
 func (so *SynapseOutput) createFileOutput(config SynapseOutputConfiguration) output.OutputI {
-	return output.CreateOutput(config.Type,config.OutputFilePath,true,false,false,nil,nil,"",nil,"",0,"",0)
+	return output.CreateOutput(config.Type,config.OutputFilePath,true,false,false,nil,nil,"",nil,"",0,"",0,"")
 }
 
 func(so *SynapseOutput) getAllBackends() output.OutputBackendSlice {

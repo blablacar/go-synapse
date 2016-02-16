@@ -29,7 +29,8 @@ func CreateOutput(
         SocketFilePath string,
         WriteInterval int,
         StateFile string,
-        StateTTL int) OutputI {
+        StateTTL int,
+	BindAddress string) OutputI {
 
 	var returnOutput OutputI
 	switch(Type) {
@@ -47,7 +48,8 @@ func CreateOutput(
 			SocketFilePath,
 			WriteInterval,
 			StateFile,
-			StateTTL)
+			StateTTL,
+			BindAddress)
 		returnOutput = &output
 	case "file":
 		var output FileOutput

@@ -23,6 +23,7 @@ type SynapseOutputConfiguration struct {
 	SocketFilePath string `json:"socket_file_path"`
 	StateFilePath string `json:"state_file_path"`
 	StateFileTTL int `json:"state_file_ttl"`
+	BindAddress string `json:"bind_address"`
 	DoWrites bool `json:"do_writes"`
 	DoReloads bool `json:"do_reloads"`
 	DoSocket bool `json:"do_socket"`

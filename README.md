@@ -246,6 +246,9 @@ The top level `haproxy` section of the config file has the following options:
 Note that a non-default `bind_address` can be dangerous.
 If you configure an `address:port` combination that is already in use on the system, haproxy will fail to start.
 
+Another Usefull Note:
+HAProxy reload control heavy depends on system clock. If you adjust your clock, when go-synapse running... You can have more reload than expected, or the opposite (reload waiting for n seconds instead of being each `restart_interval`).
+
 
 ### HAProxy shared HTTP Frontend ###
 

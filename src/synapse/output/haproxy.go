@@ -27,6 +27,7 @@ type HAProxyOutput struct {
 	WriteInterval int
 	StateFile string
 	StateTTL int
+	BindAddress string
 	waitGroup sync.WaitGroup
 	lastReload time.Time
 }
@@ -43,7 +44,8 @@ func(h *HAProxyOutput) SetConfiguration(
 	SocketFilePath string,
 	WriteInterval int,
 	StateFile string,
-	StateTTL int) {
+	StateTTL int,
+	BindAddress string) {
 
 	h.DoWrites = DoWrites
 	h.DoReloads = DoReloads
@@ -63,6 +65,11 @@ func(h *HAProxyOutput) SetConfiguration(
 	h.WriteInterval = WriteInterval
 	h.StateFile = StateFile
 	h.StateTTL = StateTTL
+	if BindAddress != "" {
+		h.BindAddress = BindAddress
+	}else {
+		h.BindAddress = "localhost"
+	}
 }
 
 func(h *HAProxyOutput) isBackendsModified(newBackends OutputBackendSlice) (bool,bool,[]string,error) {
@@ -175,7 +182,7 @@ func(h *HAProxyOutput) SaveConfiguration() error {
 	// Listen Section
 		for _, backend := range h.Backends {
 			data += "listen " + backend.Name + "\n"
-			data += "  bind localhost:" + strconv.Itoa(backend.Port) + "\n"
+			data += "  bind " + h.BindAddress + ":" + strconv.Itoa(backend.Port) + "\n"
 			for _, line := range backend.Listen {
 				data += "  " + line + "\n"
 			}
