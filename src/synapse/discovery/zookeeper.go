@@ -84,7 +84,6 @@ func(zd *zookeeperDiscovery) watchLoop(snapshots chan []string, error_chan chan 
 				watchChildsSignal <- true
 				return
 			}
-			log.Debug("Zookeeper Discovery: New Event Receive from [",zd.ZKPath,"] type [",event.Type,"] State [",event.State,"]")
 		case signal := <-zd.destroySignal:
 			if signal {
 				log.Info("Kill signal receive in Zookeeper Discovery Watch")
@@ -133,7 +132,6 @@ func(zd *zookeeperDiscovery) addNewDicoveredHost(hostList *[]DiscoveredHost,host
 }
 
 func(zd *zookeeperDiscovery) updateDiscoveredHosts(HostList []string) error {
-	log.Debug("updateDiscoveredHosts - [",len(HostList),"] Hosts modified")
 	if len(HostList) == 0 {
 		if len(zd.Hosts) > 0 {
 			//We can empty the Node List
