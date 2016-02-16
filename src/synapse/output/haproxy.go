@@ -28,6 +28,7 @@ type HAProxyOutput struct {
 	StateFile string
 	StateTTL int
 	waitGroup sync.WaitGroup
+	lastReload time.Time
 }
 
 func(h *HAProxyOutput) SetConfiguration(
@@ -208,6 +209,14 @@ func(h *HAProxyOutput) SaveConfiguration() error {
 
 func(h *HAProxyOutput) reloadHAProxyDaemon() error {
 	if h.DoReloads {
+		if h.WriteInterval > 0 {
+			now := time.Now()
+			expirationDate := h.lastReload.Add(time.Duration(h.WriteInterval) * time.Millisecond)
+			if expirationDate.After(now) {
+			        time.Sleep(expirationDate.Sub(now))
+			}
+			h.lastReload = time.Now()
+		}
 		var command exec.Cmd
 		command.Path = h.ReloadCommandBinary
 		command.Args = h.ReloadCommandArguments
