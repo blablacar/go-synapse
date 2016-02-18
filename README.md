@@ -209,14 +209,11 @@ If you do not list any default servers, no proxy will be created.  The
 
 This section is its own hash, which should contain the following keys:
 
-* `port`: the port (on localhost) where HAProxy will listen for connections to the service. If this is omitted, only a backend stanza (and no frontend stanza) will be generated for this service; you'll need to get traffic to your service yourself via the `shared_frontend` or manual frontends in `extra_sections`
+* `port`: the port (on localhost) where HAProxy will listen for connections to the service. If this is omitted, only a backend stanza (and no listen stanza) will be generated for this service; you'll need to get traffic to your service yourself via the `shared_frontend` or manual frontends in `extra_sections`
 * `server_port_override`: the port that discovered servers listen on; you should specify this if your discovery mechanism only discovers names or addresses (like the DNS watcher). If the discovery method discovers a port along with hostnames (like the zookeeper watcher) this option may be left out, but will be used in preference if given.
 * `server_options`: the haproxy options for each `server` line of the service in HAProxy config; it may be left out.
-* `frontend`: additional lines passed to the HAProxy config in the `frontend` stanza of this service
-* `backend`: additional lines passed to the HAProxy config in the `backend` stanza of this service
-* `backend_name`: The name of the generated HAProxy backend for this service
-  (defaults to the service's key in the `services` section)
-* `listen`: these lines will be parsed and placed in the correct `frontend`/`backend` section as applicable; you can put lines which are the same for the frontend and backend here.
+* `backend`: additional lines passed to the HAProxy config in the `backend` stanza of this service (or listen section if no shared frontend declared)
+* `listen`: these lines will be parsed and placed in the `listen` section;
 * `shared_frontend`: optional: haproxy configuration directives for a shared http frontend (see below)
 
 <a name="haproxy"/>
@@ -259,51 +256,74 @@ Note that synapse does not assemble the routing ACLs for you; you have to do tha
 This is probably most useful in combination with the `service_conf_dir` directive in a case where the individual service config files are being distributed by a configuration manager such as puppet or chef, or bundled into service packages.
 For example:
 
-```yaml
- haproxy:
-  shared_frontend:
-   - "bind 127.0.0.1:8081"
-  reload_command: "service haproxy reload"
-  config_file_path: "/etc/haproxy/haproxy.cfg"
-  socket_file_path: "/var/run/haproxy.sock"
-  global:
-   - "daemon"
-   - "user    haproxy"
-   - "group   haproxy"
-   - "maxconn 4096"
-   - "log     127.0.0.1 local2 notice"
-   - "stats   socket /var/run/haproxy.sock"
-  defaults:
-   - "log      global"
-   - "balance  roundrobin"
- services:
-  service1:
-   discovery: 
-    method: "zookeeper"
-    path:  "/nerve/services/service1"
-    hosts:
-     - "0.zookeeper.example.com:2181"
-   haproxy:
-    server_options: "check inter 2s rise 3 fall 2"
-    shared_frontend:
-     - "acl is_service1 hdr_dom(host) -i service1.lb.example.com"
-     - "use_backend service1 if is_service1"
-    backend: "mode http"
-
-  service2:
-   discovery:
-    method: "zookeeper"
-    path:  "/nerve/services/service2"
-    hosts: "0.zookeeper.example.com:2181"
-
-   haproxy:
-    server_options: "check inter 2s rise 3 fall 2"
-    shared_frontend:
-     - "acl is_service1 hdr_dom(host) -i service2.lb.example.com"
-     - "use_backend service2 if is_service2
-    backend:
-     - "mode http"
-
+```json
+ "output": {
+  "type": "haproxy"
+  "shared_frontend": [
+  {
+   "name": "sharedfront1",
+   "content": [
+       "bind 127.0.0.1:8081",
+       "mode eration"
+   ]
+  }
+  ],
+  "reload_command": "service haproxy reload",
+  "config_file_path": "/etc/haproxy/haproxy.cfg",
+  "socket_file_path": "/var/run/haproxy.sock",
+  "global": [
+   "daemon",
+   "user    haproxy",
+   "group   haproxy",
+   "maxconn 4096",
+   "log     127.0.0.1 local2 notice",
+   "stats   socket /var/run/haproxy.sock"
+  ],
+  "defaults": [
+   "log      global",
+   "balance  roundrobin"
+  ]
+ }
+ "services": [
+ {
+  "name":"service1",
+  "discovery": { 
+   "method": "zookeeper",
+   "path":  "/nerve/services/service1",
+   "hosts": ["0.zookeeper.example.com:2181"]
+  }
+  "haproxy": {
+   "server_options": "check inter 2s rise 3 fall 2",
+   "shared_frontend": {
+    "name": "sharedfront1",
+    "content": [
+     "acl is_service1 hdr_dom(host) -i service1.lb.example.com",
+     "use_backend service1 if is_service1"
+    ],
+   },
+   "backend": ["mode http"]
+  }
+ },
+ {
+  "name": "service2",
+  "discovery": {
+   "method": "zookeeper",
+   "path":  "/nerve/services/service2",
+   "hosts": ["0.zookeeper.example.com:2181"]
+  }
+  "haproxy": {
+   "server_options": "check inter 2s rise 3 fall 2",
+   "shared_frontend": {
+    "name": "sharedfront1",
+    "content": [
+     "acl is_service1 hdr_dom(host) -i service2.lb.example.com",
+     "use_backend service2 if is_service2"
+    ],
+   },
+   "backend": ["mode http"]
+  }
+ }
+ ]
 ```
 
 This would produce an haproxy.cfg much like the following:
@@ -317,7 +337,7 @@ backend service2
         mode http
         server server2.example.net:80 server2.example.net:80 check inter 2s rise 3 fall 2
 
-frontend shared-frontend
+frontend sharedfront1
         bind 127.0.0.1:8081
         acl is_service1 hdr_dom(host) -i service1.lb
         use_backend service1 if is_service1
