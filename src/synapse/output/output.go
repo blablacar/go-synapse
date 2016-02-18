@@ -30,7 +30,8 @@ func CreateOutput(
         WriteInterval int,
         StateFile string,
         StateTTL int,
-	BindAddress string) OutputI {
+	BindAddress string,
+	SharedFrontends []HAProxyOutputSharedFrontend) OutputI {
 
 	var returnOutput OutputI
 	switch(Type) {
@@ -49,7 +50,8 @@ func CreateOutput(
 			WriteInterval,
 			StateFile,
 			StateTTL,
-			BindAddress)
+			BindAddress,
+			SharedFrontends)
 		returnOutput = &output
 	case "file":
 		var output FileOutput

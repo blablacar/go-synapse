@@ -13,6 +13,11 @@ import (
 	"net"
 )
 
+type HAProxyOutputSharedFrontend struct {
+	Name string
+	Content []string
+}
+
 type HAProxyOutput struct {
 	Output
 	DoWrites bool
@@ -30,6 +35,7 @@ type HAProxyOutput struct {
 	BindAddress string
 	waitGroup sync.WaitGroup
 	lastReload time.Time
+	SharedFrontends []HAProxyOutputSharedFrontend
 }
 
 func(h *HAProxyOutput) SetConfiguration(
@@ -45,7 +51,8 @@ func(h *HAProxyOutput) SetConfiguration(
 	WriteInterval int,
 	StateFile string,
 	StateTTL int,
-	BindAddress string) {
+	BindAddress string,
+	SharedFrontends []HAProxyOutputSharedFrontend) {
 
 	h.DoWrites = DoWrites
 	h.DoReloads = DoReloads
@@ -70,6 +77,7 @@ func(h *HAProxyOutput) SetConfiguration(
 	}else {
 		h.BindAddress = "localhost"
 	}
+	h.SharedFrontends = SharedFrontends
 }
 
 func(h *HAProxyOutput) isBackendsModified(newBackends OutputBackendSlice) (bool,bool,[]string,error) {
@@ -160,8 +168,27 @@ func(h *HAProxyOutput) LoadState() error {
 	return nil
 }
 
+func(h *HAProxyOutput) modifySharedFrontend(lsfs *[]HAProxyOutputSharedFrontend, Name string, Content []string) {
+	for index, sf := range *lsfs {
+		if sf.Name == Name {
+			for _, str := range Content {
+				(*lsfs)[index].Content = append((*lsfs)[index].Content, str)
+			}
+			return
+		}
+	}
+	//Name not found, create it
+	var sf HAProxyOutputSharedFrontend
+	sf.Name = Name
+	sf.Content = Content
+	*lsfs = append(*lsfs,sf)
+	return
+}
+
 func(h *HAProxyOutput) SaveConfiguration() error {
 	if h.DoWrites {
+		var lsfs []HAProxyOutputSharedFrontend
+		lsfs = h.SharedFrontends
 		var data string
 	// Write Header
 		data = "#\n"
@@ -181,8 +208,16 @@ func(h *HAProxyOutput) SaveConfiguration() error {
 		data += "\n"
 	// Listen Section
 		for _, backend := range h.Backends {
-			data += "listen " + backend.Name + "\n"
-			data += "  bind " + h.BindAddress + ":" + strconv.Itoa(backend.Port) + "\n"
+			if backend.SharedFrontendName != "" || backend.Port <= 0 {
+				data += "backend " + backend.Name + "\n"
+				h.modifySharedFrontend(&lsfs,backend.SharedFrontendName,backend.SharedFrontendContent)
+				for _, line := range backend.Backend {
+					data += "  " + line + "\n"
+				}
+			}else {
+				data += "listen " + backend.Name + "\n"
+				data += "  bind " + h.BindAddress + ":" + strconv.Itoa(backend.Port) + "\n"
+			}
 			for _, line := range backend.Listen {
 				data += "  " + line + "\n"
 			}
@@ -199,6 +234,16 @@ func(h *HAProxyOutput) SaveConfiguration() error {
 					data += " disabled"
 				}
 				data += "\n"
+			}
+			data += "\n"
+		}
+	//Shared Frontend Section
+		if len(lsfs) > 0 {
+			for _, sf := range lsfs {
+				data += "frontend " + sf.Name +"\n"
+				for _, str := range sf.Content {
+					data += "  " + str + "\n"
+				}
 			}
 			data += "\n"
 		}

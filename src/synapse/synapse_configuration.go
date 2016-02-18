@@ -15,6 +15,11 @@ type SynapseCommandHAProxyConfiguration struct {
 	Arguments []string `json:"arguments"`
 }
 
+type SynapseSharedFrontendHAProxyConfiguration struct {
+	Name string `json:"name"`
+	Content []string `json:"content"`
+}
+
 type SynapseOutputConfiguration struct {
 	Type string `json:"type"`
 	OutputFilePath string `json:"output_file_path"`
@@ -31,12 +36,20 @@ type SynapseOutputConfiguration struct {
 	Defaults []string `json:"defaults"`
 	ExtraSections []SynapseExtraSectionConfiguration `json:"extra_sections"`
 	RestartInterval int `json:"restart_interval"`
+	SharedFrontend []SynapseSharedFrontendHAProxyConfiguration `json:"shared_frontend"`
+}
+
+type SynapseServiceHAProxySharedFrontendConfiguration struct {
+	Name string `json:"name"`
+	Content []string `json:"content"`
 }
 
 type SynapseServiceHAProxyConfiguration struct {
 	Port int `json:"port"`
 	ServerOptions string `json:"server_options"`
 	Listen []string `json:"listen"`
+	SharedFrontend SynapseServiceHAProxySharedFrontendConfiguration `json:"shared_frontend"`
+	Backend []string `json:"backend"`
 }
 
 type SynapseServiceDiscoveryConfiguration struct {

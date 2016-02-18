@@ -17,7 +17,10 @@ type OutputBackend struct {
 	Port int
 	ServerOptions string
 	Listen []string
+	Backend []string
 	Servers OutputBackendServerSlice
+	SharedFrontendName string
+	SharedFrontendContent []string
 }
 
 type OutputBackendServerSlice []OutputBackendServer

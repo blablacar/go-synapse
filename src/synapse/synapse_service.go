@@ -11,9 +11,12 @@ type SynapseService struct {
 	HAPPort int
 	HAPServerOptions string
 	HAPListen []string
+	HAPBackend []string
 	Discovery discovery.DiscoveryI
 	KeepDefaultServers bool
 	DefaultServers []SynapseServiceServerConfiguration
+	SharedFrontendName string
+	SharedFrontendContent []string
 }
 
 func(ss *SynapseService) Run(stop <-chan bool) error {
@@ -42,6 +45,7 @@ func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceI
 	ss.HAPPort = config.HAProxy.Port
 	ss.HAPServerOptions = config.HAProxy.ServerOptions
 	ss.HAPListen = config.HAProxy.Listen
+	ss.HAPBackend = config.HAProxy.Backend
 	ss.DefaultServers = config.DefaultServers
 	if config.KeepDefaultServers {
 		ss.KeepDefaultServers = true
@@ -53,6 +57,10 @@ func(ss *SynapseService) Initialize(config SynapseServiceConfiguration,InstanceI
 	if err != nil {
 		log.WithError(err).Warn("Synapse Service [",ss.Name,"] Initilization fail")
 		return err
+	}
+	if config.HAProxy.SharedFrontend.Name != "" {
+		ss.SharedFrontendName = config.HAProxy.SharedFrontend.Name
+		ss.SharedFrontendContent = config.HAProxy.SharedFrontend.Content
 	}
 	return nil
 }

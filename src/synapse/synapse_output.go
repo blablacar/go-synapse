@@ -48,6 +48,13 @@ func(so *SynapseOutput) Initialize(config SynapseOutputConfiguration, services [
 }
 
 func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) output.OutputI {
+	var sharedFrontends []output.HAProxyOutputSharedFrontend
+	for _, sharedFrontend := range config.SharedFrontend {
+		var hapSF output.HAProxyOutputSharedFrontend
+		hapSF.Name = sharedFrontend.Name
+		hapSF.Content = sharedFrontend.Content
+		sharedFrontends = append(sharedFrontends,hapSF)
+	}
 	return output.CreateOutput(
 		config.Type,
 		config.ConfigFilePath,
@@ -62,11 +69,12 @@ func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) 
 		config.RestartInterval,
 		config.StateFilePath,
 		config.StateFileTTL,
-		config.BindAddress)
+		config.BindAddress,
+		sharedFrontends)
 }
 
 func (so *SynapseOutput) createFileOutput(config SynapseOutputConfiguration) output.OutputI {
-	return output.CreateOutput(config.Type,config.OutputFilePath,true,false,false,nil,nil,"",nil,"",0,"",0,"")
+	return output.CreateOutput(config.Type,config.OutputFilePath,true,false,false,nil,nil,"",nil,"",0,"",0,"",nil)
 }
 
 func(so *SynapseOutput) getAllBackends() output.OutputBackendSlice {
@@ -77,6 +85,9 @@ func(so *SynapseOutput) getAllBackends() output.OutputBackendSlice {
 		backend.Port = service.HAPPort
 		backend.ServerOptions = service.HAPServerOptions
 		backend.Listen = service.HAPListen
+		backend.Backend = service.HAPBackend
+		backend.SharedFrontendName = service.SharedFrontendName
+		backend.SharedFrontendContent = service.SharedFrontendContent
 		//Get All dynamic servers to include
 		discoveredHosts := service.Discovery.GetDiscoveredHosts()
 		for _, server := range discoveredHosts {
