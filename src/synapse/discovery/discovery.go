@@ -26,7 +26,6 @@ type Discovery struct {
 
 type DiscoveryI interface {
         GetType() string
-        SetBaseConfiguration(ConnectTimeout int)
 	GetDiscoveredHosts() []DiscoveredHost
 	Run(stop <-chan bool) error
 	Destroy() error
@@ -46,13 +45,17 @@ func CreateDiscovery(Type string, ConnectTimeout int, param1 string, param2 []st
 			zookeeper_discovery.Initialize()
 			zookeeper_discovery.SetZKConfiguration(param2,param1)
 			zookeeper_discovery.serviceModified = serviceModified
+			zookeeper_discovery.SetBaseConfiguration(ConnectTimeout)
 			discovery = zookeeper_discovery
+		case DISCOVERY_BASE_TYPE:
+			base_discovery := new(baseDiscovery)
+			base_discovery.Initialize()
+			discovery = base_discovery
                 default:
 			err := errors.New("Unknown discovery type")
 			log.Warn("Unknown discovery type [",Type,"]")
 			return nil, err
         }
-	discovery.SetBaseConfiguration(ConnectTimeout)
         return discovery, nil
 }
 
