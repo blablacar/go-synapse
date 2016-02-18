@@ -62,15 +62,16 @@ Add an array under `services` that looks like this:
      "port": 3306
    },
    "discovery": {
-    "method": "zookeeper"
-    "path": "/services/proddb"
+    "method": "zookeeper",
+    "path": "/services/proddb",
     "hosts": ["zkhost1","zkhost2"]
    },
    "haproxy": {
     "port": 3307,
     "server_options": "check inter 2000 rise 3 fall 2",
-    "frontend: mode tcp",
-    "backend: mode tcp"
+    "frontend": "mode tcp",
+    "backend": "mode tcp"
+   }
   }
  ]
 ```
@@ -258,7 +259,7 @@ For example:
 
 ```json
  "output": {
-  "type": "haproxy"
+  "type": "haproxy",
   "shared_frontend": [
   {
    "name": "sharedfront1",
@@ -291,7 +292,7 @@ For example:
    "method": "zookeeper",
    "path":  "/nerve/services/service1",
    "hosts": ["0.zookeeper.example.com:2181"]
-  }
+  },
   "haproxy": {
    "server_options": "check inter 2s rise 3 fall 2",
    "shared_frontend": {
@@ -310,7 +311,7 @@ For example:
    "method": "zookeeper",
    "path":  "/nerve/services/service2",
    "hosts": ["0.zookeeper.example.com:2181"]
-  }
+  },
   "haproxy": {
    "server_options": "check inter 2s rise 3 fall 2",
    "shared_frontend": {
