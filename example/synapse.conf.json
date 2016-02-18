@@ -54,6 +54,7 @@
           "option httpchk /health"
         ]
       }
+    }
   ],
   "output": {
     "type": "haproxy",
