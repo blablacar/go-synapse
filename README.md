@@ -178,18 +178,6 @@ It takes the following mandatory arguments:
 
 The discovery assumes that each node under `path` represents a service server.
 
-##### Marathon #####
-
-This discovery polls the Marathon API and retrieves a list of instances for a
-given application.
-
-It takes the following options:
-
-* `marathon_api_url`: Address of the marathon API (e.g. `http://marathon-master:8080`)
-* `application_name`: Name of the application in Marathon
-* `check_interval`: How often to request the list of tasks from Marathon (default: 10 seconds)
-* `port_index`: Index of the backend port in the task's "ports" array. (default: 0)
-
 #### Listing Default Servers ####
 
 You may list a number of default servers providing a service.
@@ -253,8 +241,8 @@ HAProxy reload control heavy depends on system clock. If you adjust your clock, 
 For HTTP-only services, it is not always necessary or desirable to dedicate a TCP port per service, since HAProxy can route traffic based on host headers.
 To support this, the optional `shared_frontend` section can be added to both the `haproxy` section and each indvidual service definition.
 Synapse will concatenate them all into a single frontend section in the generated haproxy.cfg file.
+You can have more than one shared_frontend, by usong different `name`.
 Note that synapse does not assemble the routing ACLs for you; you have to do that yourself based on your needs.
-This is probably most useful in combination with the `service_conf_dir` directive in a case where the individual service config files are being distributed by a configuration manager such as puppet or chef, or bundled into service packages.
 For example:
 
 ```json
