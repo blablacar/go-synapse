@@ -15,7 +15,7 @@ build:
 	mv synapse bin/.
 
 test:
-	$(GOMCMD) test synapse
+	$(GOMCMD) test synapse synapse/output
 
 clean:
 	rm -f bin/*
