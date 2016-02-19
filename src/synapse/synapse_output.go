@@ -27,7 +27,7 @@ func(so *SynapseOutput) Run(stopper chan bool,servicesModified chan bool) {
 				so.Output.Stop()
 				break Loop
 			case <-servicesModified:
-				backends := so.getAllBackends()
+				backends := so.GetAllBackends()
 				backendsChan <- backends
 		}
 	}
@@ -44,7 +44,7 @@ func(so *SynapseOutput) Initialize(config SynapseOutputConfiguration, services [
 		so.Output = so.createFileOutput(config)
 	}
 	//First Initialisation of backends
-	so.Output.SetBackends(so.getAllBackends())
+	so.Output.SetBackends(so.GetAllBackends())
 }
 
 func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) output.OutputI {
@@ -77,7 +77,7 @@ func (so *SynapseOutput) createFileOutput(config SynapseOutputConfiguration) out
 	return output.CreateOutput(config.Type,config.OutputFilePath,true,false,false,nil,nil,"",nil,"",0,"",0,"",nil)
 }
 
-func(so *SynapseOutput) getAllBackends() output.OutputBackendSlice {
+func(so *SynapseOutput) GetAllBackends() output.OutputBackendSlice {
 	var backends output.OutputBackendSlice
 	for _, service := range so.Services {
 		var backend output.OutputBackend

@@ -1,6 +1,7 @@
 package output
 
 type Output struct {
+	Type string
 	Backends OutputBackendSlice
 	StateFile string
 	WriteInterval int
@@ -14,6 +15,7 @@ type OutputI interface {
 	WaitTermination()
 	Initialize()
 	SetBackends(OutputBackendSlice)
+	GetType() string
 }
 
 func CreateOutput(
@@ -37,6 +39,7 @@ func CreateOutput(
 	switch(Type) {
 	case "haproxy":
 		var output HAProxyOutput
+		output.Type = Type
 		output.SetConfiguration(
 			DoWrites,
 			DoReloads,
@@ -56,11 +59,18 @@ func CreateOutput(
 	case "file":
 		var output FileOutput
 		output.SetConfiguration(FilePath,WriteInterval)
+		output.Type = Type
 		returnOutput = &output
+	default:
+		return nil
 	}
 	return returnOutput
 }
 
 func(o *Output) SetBackends(backends OutputBackendSlice) {
 	o.Backends = backends
+}
+
+func(o *Output) GetType() string {
+	return o.Type
 }
