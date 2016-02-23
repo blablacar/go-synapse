@@ -3,60 +3,63 @@
 Discoverys are the piece of GO-Synapse that watch an external service registry
 and reflect those changes in the local HAProxy state. Discoverys should conform
 to the interface specified by `DiscoveryI`.
-Your entries of Backends list and state must be re-entrant, because the HAProxy
-Manager classe will use it to manage HAProxy configuration.
+Here you can find the Base Discovery Implementation(file synapse/discovery/base.go):
 
 ```go
-require "synapse/service_watcher/base"
+package discovery
 
-class Synapse::ServiceWatcher
-  class MyWatcher < BaseWatcher
-    def start
-      # write code which begins running service discovery
-    end
+import (
+	log "github.com/Sirupsen/logrus"
+)
 
-    def stop
-      # write code which tears down the service discovery
-    end
+const DISCOVERY_BASE_TYPE string = "BASE"
 
-    def ping?
-      # write code to check in on the health of the watcher
-    end
+type baseDiscovery struct {
+	Discovery
+}
 
-    private
-    def validate_discovery_opts
-      # here, validate any required options in @discovery
-    end
 
-    ... setup watches, poll, etc ... and call set_backends when you have new
-    ... backends to set
+func(bd *baseDiscovery) Initialize() {
+	bd.Type = DISCOVERY_BASE_TYPE
+}
 
-  end
-end
+func(bd *baseDiscovery) Run(stop <-chan bool) error {
+	stopped := <-stop
+	if stopped {
+		log.Warn("Base Discovery, stopSignal Received")
+	}else {
+		log.Warn("Base Discovery, stopSignal Received, but ?? false ??")
+	}
+	return nil
+}
+
+func(bd *baseDiscovery) Destroy() error {
+	return nil
+}
+
+func(bd *baseDiscovery) WaitTermination() {
+	return
+}
+
+func(bd *baseDiscovery) GetType() string {
+	return bd.Type
+}
 ```
+
+Then you need to add a piece of code in the synapse/discovery/discovery.go file, in the function CreateDiscovery. For example here is the corresponding code for the base discovery:
+```go
+                case DISCOVERY_BASE_TYPE:
+                        base_discovery := new(baseDiscovery)
+                        base_discovery.Initialize()
+                        discovery = base_discovery
+```
+
+### Discovery Specific Configuration
+
+Unfortunatly, there's no automatic way of adding auto-discovered configuration for now. So you have to modify the synapse/synapse_configuration.go file. Then modify synapse/synapse_service.go (where the discovery object is created based on the configuration). And perhaps also modify the CreateDiscovery function in the synapse/discovery/discovery.go file.
 
 ### Discovery Plugin Inteface
-Synapse deduces both the class path and class name from the `method` key within
-the watcher configuration.  Every discovery is passed configuration with the
-`method` key, e.g. `zookeeper` or `ec2tag`.
-
-#### Class Location
-Synapse expects to find your class at `synapse/service_watcher/#{method}`. You
-must make your watcher available at that path, and Synapse can "just work" and
-find it.
-
-#### Class Name
-These method strings are then transformed into class names via the following
-function:
-
-```
-method_class  = method.split('_').map{|x| x.capitalize}.join.concat('Watcher')
-```
-
-This has the effect of taking the method, splitting on '_', capitalizing each
-part and recombining with an added 'Watcher' on the end. So `zookeeper_dns`
-becomes `ZookeeperDnsWatcher`, and `zookeeper` becomes `Zookeeper`. Make sure
-your class name is correct.
+Unlike the original Synapse from AirBNB, it's not possible to load your discovery as a plugin. You need all your code, when compiling synapse itself. 
 
 <a name="backend_interface"/>
 ### Backend interface
@@ -80,3 +83,5 @@ changes in these lines you will need to enable the `state_file_path` option
 in the main synapse configuration. In general the HAProxy backend level
 `haproxy.server_options` setting is preferred to setting this per server
 in your backends.
+
+`maintenance` (string, optional): Sometimes, even if the service is working on a node, you want to exclude it from receiving connection. This tag is used in this case. For HAProxy output, it will disable the server, instead of removing it from the backend's server list

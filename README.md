@@ -253,7 +253,7 @@ For example:
    "name": "sharedfront1",
    "content": [
        "bind 127.0.0.1:8081",
-       "mode eration"
+       "mode http"
    ]
   }
   ],
