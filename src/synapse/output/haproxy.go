@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"errors"
 	"sync"
 	"net"
 )
@@ -84,40 +83,34 @@ func(h *HAProxyOutput) isBackendsModified(newBackends OutputBackendSlice) (bool,
 	isModified := false
 	hasToRestart := false
 	var socketCommands []string
-	//Compare current and new Backends (and all associated states)
-	if len(newBackends) != len(h.Backends) {
-		err := errors.New("[" + strconv.Itoa(len(newBackends)) + "] Backends to watch != [" + strconv.Itoa(len(h.Backends)) + "] Backends")
-		return isModified, hasToRestart, socketCommands, err
-	}else {
-		if len(newBackends) == len(h.Backends) {
-			for index, backend := range newBackends {
-				if len(backend.Servers) != len(h.Backends[index].Servers) {
-					isModified = true
-					hasToRestart = true
-				}else {
-					for i, server := range backend.Servers{
-						if server.Name == h.Backends[index].Servers[i].Name && server.Host == h.Backends[index].Servers[i].Host && server.Port == h.Backends[index].Servers[i].Port {
-							if server.Disabled != h.Backends[index].Servers[i].Disabled {
-								isModified = true
-								if server.Disabled {
-									socketCommands = append(socketCommands,"disable server " + backend.Name + "/" + server.Name)
-									log.Debug("disable server " + backend.Name + "/" + server.Name)
-								}else {
-									socketCommands = append(socketCommands,"enable server " + backend.Name + "/" + server.Name)
-									log.Debug("enable server " + backend.Name + "/" + server.Name)
-								}
-							}
-						}else {
+	if len(newBackends) == len(h.Backends) {
+		for index, backend := range newBackends {
+			if len(backend.Servers) != len(h.Backends[index].Servers) {
+				isModified = true
+				hasToRestart = true
+			}else {
+				for i, server := range backend.Servers{
+					if server.Name == h.Backends[index].Servers[i].Name && server.Host == h.Backends[index].Servers[i].Host && server.Port == h.Backends[index].Servers[i].Port {
+						if server.Disabled != h.Backends[index].Servers[i].Disabled {
 							isModified = true
-							hasToRestart = true
+							if server.Disabled {
+								socketCommands = append(socketCommands,"disable server " + backend.Name + "/" + server.Name)
+								log.Debug("disable server " + backend.Name + "/" + server.Name)
+							}else {
+								socketCommands = append(socketCommands,"enable server " + backend.Name + "/" + server.Name)
+								log.Debug("enable server " + backend.Name + "/" + server.Name)
+							}
 						}
+					}else {
+						isModified = true
+						hasToRestart = true
 					}
 				}
 			}
-		}else {
-			isModified = true
-			hasToRestart = true
 		}
+	}else {
+		isModified = true
+		hasToRestart = true
 	}
 	return isModified, hasToRestart, socketCommands, nil
 }
