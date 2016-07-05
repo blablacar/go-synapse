@@ -1,4 +1,4 @@
-package output
+package synapse
 
 type Output struct {
 	Type          string

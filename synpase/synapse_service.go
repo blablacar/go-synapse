@@ -2,7 +2,6 @@ package synapse
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/blablacar/go-synapse/synpase/discovery"
 	"time"
 )
 
@@ -12,7 +11,7 @@ type SynapseService struct {
 	HAPServerOptions      string
 	HAPListen             []string
 	HAPBackend            []string
-	Discovery             discovery.DiscoveryI
+	Discovery             DiscoveryI
 	KeepDefaultServers    bool
 	DefaultServers        []SynapseServiceServerConfiguration
 	SharedFrontendName    string
@@ -53,7 +52,7 @@ func (ss *SynapseService) Initialize(config SynapseServiceConfiguration, Instanc
 		ss.KeepDefaultServers = false
 	}
 	var err error
-	ss.Discovery, err = discovery.CreateDiscovery(config.Discovery.Type, 1000, config.Discovery.Path, config.Discovery.Hosts, serviceModified)
+	ss.Discovery, err = CreateDiscovery(config.Discovery.Type, 1000, config.Discovery.Path, config.Discovery.Hosts, serviceModified)
 	if err != nil {
 		log.WithError(err).Warn("Synapse Service [", ss.Name, "] Initilization fail")
 		return err

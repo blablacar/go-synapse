@@ -1,12 +1,11 @@
-package synapse_test
+package synapse
 
 import (
-	"github.com/blablacar/go-synapse/synpase"
 	"testing"
 )
 
 func TestOpenConfiguration(t *testing.T) {
-	config, err := synapse.OpenConfiguration("../example/synapse.conf.json")
+	config, err := OpenConfiguration("../example/synapse.conf.json")
 	if err != nil {
 		t.Fatal("Unable to open Configuration file", err)
 	}

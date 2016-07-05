@@ -2,7 +2,6 @@ package synapse
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/blablacar/go-synapse/synpase/output"
 	"sort"
 )
 
@@ -10,13 +9,13 @@ import (
 //It transform SYnapse COnfiguration into ouput args
 //And manages signal to transform services into an OutputBackendSlice
 type SynapseOutput struct {
-	Output   output.OutputI
+	Output   OutputI
 	Services []SynapseService
 }
 
 func (so *SynapseOutput) Run(stopper chan bool, servicesModified chan bool) {
 	defer servicesWaitGroup.Done()
-	backendsChan := make(chan output.OutputBackendSlice)
+	backendsChan := make(chan OutputBackendSlice)
 	so.Output.Initialize()
 	go so.Output.Run(backendsChan)
 Loop:
@@ -47,15 +46,15 @@ func (so *SynapseOutput) Initialize(config SynapseOutputConfiguration, services 
 	so.Output.SetBackends(so.GetAllBackends())
 }
 
-func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) output.OutputI {
-	var sharedFrontends []output.HAProxyOutputSharedFrontend
+func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) OutputI {
+	var sharedFrontends []HAProxyOutputSharedFrontend
 	for _, sharedFrontend := range config.SharedFrontend {
-		var hapSF output.HAProxyOutputSharedFrontend
+		var hapSF HAProxyOutputSharedFrontend
 		hapSF.Name = sharedFrontend.Name
 		hapSF.Content = sharedFrontend.Content
 		sharedFrontends = append(sharedFrontends, hapSF)
 	}
-	return output.CreateOutput(
+	return CreateOutput(
 		config.Type,
 		config.ConfigFilePath,
 		config.DoWrites,
@@ -73,14 +72,14 @@ func (so *SynapseOutput) createHAProxyOutput(config SynapseOutputConfiguration) 
 		sharedFrontends)
 }
 
-func (so *SynapseOutput) createFileOutput(config SynapseOutputConfiguration) output.OutputI {
-	return output.CreateOutput(config.Type, config.OutputFilePath, true, false, false, nil, nil, "", nil, "", 0, "", 0, "", nil)
+func (so *SynapseOutput) createFileOutput(config SynapseOutputConfiguration) OutputI {
+	return CreateOutput(config.Type, config.OutputFilePath, true, false, false, nil, nil, "", nil, "", 0, "", 0, "", nil)
 }
 
-func (so *SynapseOutput) GetAllBackends() output.OutputBackendSlice {
-	var backends output.OutputBackendSlice
+func (so *SynapseOutput) GetAllBackends() OutputBackendSlice {
+	var backends OutputBackendSlice
 	for _, service := range so.Services {
-		var backend output.OutputBackend
+		var backend OutputBackend
 		backend.Name = service.Name
 		backend.Port = service.HAPPort
 		backend.ServerOptions = service.HAPServerOptions
@@ -91,7 +90,7 @@ func (so *SynapseOutput) GetAllBackends() output.OutputBackendSlice {
 		//Get All dynamic servers to include
 		discoveredHosts := service.Discovery.GetDiscoveredHosts()
 		for _, server := range discoveredHosts {
-			var outServer output.OutputBackendServer
+			var outServer OutputBackendServer
 			outServer.Host = server.Host
 			outServer.Port = server.Port
 			outServer.Name = server.Name
@@ -103,7 +102,7 @@ func (so *SynapseOutput) GetAllBackends() output.OutputBackendSlice {
 		//Get All default servers to include
 		if service.KeepDefaultServers || len(backend.Servers) == 0 {
 			for _, server := range service.DefaultServers {
-				var outServer output.OutputBackendServer
+				var outServer OutputBackendServer
 				outServer.Host = server.Host
 				outServer.Port = server.Port
 				outServer.Name = server.Name

@@ -1,4 +1,4 @@
-package output
+package synapse
 
 import (
 	"encoding/json"

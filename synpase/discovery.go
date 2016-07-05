@@ -1,4 +1,4 @@
-package discovery
+package synapse
 
 import (
 	"errors"

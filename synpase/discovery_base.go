@@ -1,4 +1,4 @@
-package discovery
+package synapse
 
 import (
 	log "github.com/Sirupsen/logrus"

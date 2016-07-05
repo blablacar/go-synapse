@@ -1,4 +1,4 @@
-package output
+package synapse
 
 type OutputBackendServer struct {
 	Name                 string
