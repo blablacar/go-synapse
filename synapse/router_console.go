@@ -5,6 +5,7 @@ import (
 	"os"
 	"io"
 	"github.com/n0rad/go-erlog/errs"
+	"encoding/json"
 )
 
 type RouterConsole struct {
@@ -13,7 +14,7 @@ type RouterConsole struct {
 	writer io.Writer
 }
 
-func NewRouterFile() *RouterConsole {
+func NewRouterConsole() *RouterConsole {
 	return &RouterConsole{
 		writer: os.Stdout,
 	}
@@ -26,18 +27,11 @@ func (r *RouterConsole) Init() error {
 	return nil
 }
 
-func (r *RouterConsole) Start(stop chan struct{}) {
-	//data, err := json.Marshal(backends)
-	//if err != nil {
-	//	return errs.WithEF(err, r.fields, "Unable to marshal backends")
-	//}
-	//if err := ioutil.WriteFile(r.FilePath, data, 0644); err != nil {
-	//	return errs.WithEF(err, r.fields.WithField("file", r.FilePath), "Failed to write to router file")
-	//}
-	//return nil
-}
-
-
-func (r *RouterConsole) Run(backends []nerve.Report) error {
+func (r *RouterConsole) Update(backends []nerve.Report) error {
+	res, err := json.Marshal(backends)
+	if err != nil {
+		return errs.WithEF(err, r.fields, "Failed to prepare router update")
+	}
+	println(res)
 	return nil
 }

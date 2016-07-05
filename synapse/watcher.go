@@ -17,7 +17,7 @@ type WatcherCommon struct {
 type Watcher interface {
 	Init() error
 	GetFields() data.Fields
-	Run(stop <-chan bool, doneWaiter *sync.WaitGroup, events chan<- []nerve.Report)
+	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- []nerve.Report)
 }
 
 func (w *WatcherCommon) CommonInit() error {

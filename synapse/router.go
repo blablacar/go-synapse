@@ -4,11 +4,13 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"encoding/json"
 	"github.com/n0rad/go-erlog/data"
+	"sync"
+	"github.com/blablacar/go-nerve/nerve"
 )
 
 type RouterCommon struct {
 	Type   string
-	Services []Service
+	Services []*Service
 
 	fields data.Fields
 }
@@ -16,18 +18,40 @@ type RouterCommon struct {
 type Router interface {
 	Init() error
 	getFields() data.Fields
-	Start(stop chan struct{})
+	Start(stop chan struct{}, stopWaiter *sync.WaitGroup)
+	Update(backends []nerve.Report) error
 }
 
 func (r *RouterCommon) commonInit() error {
 	r.fields = data.WithField("type", r.Type)
 	for _, service := range r.Services {
-		if err := service.init(); err != nil {
+		if err := service.Init(); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
 		}
 	}
 
 	return nil
+}
+
+func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
+	defer stopWaiter.Done()
+
+	events := make(chan []nerve.Report)
+
+	for _, service := range r.Services {
+		go service.typedWatcher.Watch(stop, stopWaiter, events)
+	}
+
+	for {
+		select {
+		case event := <-events:
+			if err := r.Update(event); err != nil {
+				// TODO handle err
+			}
+		case <-stop:
+			return
+		}
+	}
 }
 
 func (r *RouterCommon) getFields() data.Fields {
@@ -43,8 +67,8 @@ func RouterFromJson(content []byte) (Router, error) {
 	fields := data.WithField("type", t.Type)
 	var typedRouter Router
 	switch t.Type {
-	case "file":
-		typedRouter = NewRouterFile()
+	case "console":
+		typedRouter = NewRouterConsole()
 	default:
 		return nil, errs.WithF(fields, "Unsupported router type")
 	}

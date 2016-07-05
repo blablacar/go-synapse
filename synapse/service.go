@@ -14,7 +14,7 @@ type Service struct {
 	typedWatcher Watcher
 }
 
-func (s *Service) init() error {
+func (s *Service) Init() error {
 	watcher, err := WatcherFromJson(s.Watcher)
 	if err != nil {
 		return errs.WithE(err, "Failed to read watcher")

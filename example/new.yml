@@ -1,23 +1,23 @@
 
 
 apiHost: localhost
-apiPort: 4242
+apiPort: 8888
 
 routers:
-  - type: file
+  - type: console
 #    reloadCommand: [/reload.sh]
 #    reloadTimeout: 1000
 #    socketFile: /run/haproxy.socket
 
     services:
-      - name: service1
-        port: 4242
-
-        routerOptions:
-          port:
-          serverOptions: "check inter 2s rise 3 fall 2"
-
+      - port: 4444
         watcher:
           type: zookeeper
-          hosts: ['localhost:2345']
-          path: /services/db/db_write
+          hosts: ['localhost:2181']
+          path: /services/tripsearch
+
+      - port: 9999
+        watcher:
+          type: zookeeper
+          hosts: ['localhost:2181']
+          path: /monitoring/tripsearch
