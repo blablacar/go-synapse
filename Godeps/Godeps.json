@@ -1,0 +1,19 @@
+{
+	"ImportPath": "github.com/blablacar/go-synapse",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v65",
+	"Packages": [
+		"././..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.8.7",
+			"Rev": "418b41d23a1bf978c06faea5313ba194650ac088"
+		},
+		{
+			"ImportPath": "github.com/samuel/go-zookeeper/zk",
+			"Rev": "4b20de542e40ed2b89d65ae195fc20a330919b92"
+		}
+	]
+}

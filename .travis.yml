@@ -1,0 +1,12 @@
+language: go
+
+sudo: required
+
+go:
+ - 1.6
+
+install:
+  - sudo apt-get install -qq upx
+
+script:
+  - ./gomake
