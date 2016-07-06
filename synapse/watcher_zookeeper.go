@@ -72,9 +72,9 @@ func (n *nodes) getValues() []nerve.Report {
 
 type WatcherZookeeper struct {
 	WatcherCommon
-	Hosts          []string
-	Path           string
-	TimeoutInMilli int
+	Hosts            []string
+	Path             string
+	TimeoutInMilli   int
 
 	reports          nodes
 	connection       *zk.Conn
@@ -95,7 +95,7 @@ func (w *WatcherZookeeper) Init() error {
 	}
 	w.fields = w.fields.WithField("path", w.Path)
 
-	conn, ev, err := zk.Connect(w.Hosts, time.Duration(w.TimeoutInMilli)*time.Millisecond)
+	conn, ev, err := zk.Connect(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
 	if err != nil {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
@@ -104,32 +104,27 @@ func (w *WatcherZookeeper) Init() error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- []nerve.Report) {
+func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <- []nerve.Report) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
+	watcherStop := make(chan struct{})
+	watcherStopWaiter := sync.WaitGroup{}
 
 	for {
 		select {
-		case <-w.reports.changed:
-			reports := w.reports.getValues()
-			logs.WithF(w.fields.WithField("reports", reports)).Debug("Report changes")
+		case <- w.reports.changed:
+			events <- w.reports.getValues()
 		case e := <-w.connectionEvents:
+			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
 			switch e.Type {
 			case zk.EventSession | zk.EventType(0):
-				logs.WithF(w.fields.WithField("event", e)).Debug("Received connection event from zk")
 				if e.State == zk.StateHasSession {
-					go w.watchRoot(stop, doneWaiter)
+					go w.watchRoot(watcherStop, &watcherStopWaiter)
 				}
-			case zk.EventNodeDataChanged:
-			case zk.EventNodeDeleted:
-			case zk.EventNodeChildrenChanged:
-			case zk.EventNodeCreated:
-			case zk.EventNotWatching:
-
-			default:
-				logs.WithF(w.fields.WithField("event", e)).Debug("Received connection event from zk")
 			}
 		case <-stop:
+			close(watcherStop)
+			watcherStopWaiter.Wait()
 			w.connection.Close()
 			return
 		}
@@ -140,40 +135,29 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
 
-	childs, _, rootEvents, err := w.connection.ChildrenW(w.Path)
-	if err != nil {
-		//TODO hum
-		logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
-	}
-
-	for _, child := range childs {
-		go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
-	}
-
 	for {
+		childs, _, rootEvents, err := w.connection.ChildrenW(w.Path)
+		if err != nil {
+			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
+			return
+		}
+
+		for _, child := range childs {
+			if _, ok := w.reports.get(child); !ok {
+				go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
+			}
+		}
+
 		select {
 		case e := <-rootEvents:
-			logs.WithF(w.fields.WithField("event", e)).Debug("Receiving event for root node")
+			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for root node")
 			switch e.Type {
-			case zk.EventNodeChildrenChanged:
-				childs, _, err := w.connection.Children(w.Path)
-				if err != nil {
-					logs.WithEF(err, w.fields).Warn("Cannot read node")
-					// TODO ??
-				}
-
-				for _, child := range childs {
-					if _, ok := w.reports.get(child); !ok {
-						go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
-					}
-				}
-			case zk.EventNodeDataChanged:
-				logs.WithF(w.fields).Warn("Received data changed for root node")
+			case zk.EventNodeChildrenChanged | zk.EventNodeCreated | zk.EventNodeDataChanged | zk.EventNotWatching:
+			// loop
 			case zk.EventNodeDeleted:
 				w.reports.removeAll()
 			}
 		case <-stop:
-			// TODO remove watcher
 			return
 		}
 	}
@@ -186,39 +170,27 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 	fields := w.fields.WithField("node", node)
 	logs.WithF(fields).Debug("New node watcher")
 
-	content, _, childEvent, err := w.connection.GetW(node)
-	if err != nil {
-		logs.WithEF(err, w.fields).Warn("Failed to watch node")
-		// TODO
-		//return errs.WithEF(err, w.fields, "Failed to watch node")
-	}
-	w.reports.addRawReport(node, content, fields)
-
 	for {
-		select {
-		case e := <-childEvent:
-			logs.WithF(fields.WithField("event", e)).Debug("Receiving node event from zk")
-			switch e.Type {
-			case zk.EventNodeDeleted:
-				w.reports.removeNode(node)
-				// TODO remove watcher
-				return
-			case zk.EventNodeDataChanged | zk.EventNodeCreated:
-				content, _, err := w.connection.Get(node)
-				if err != nil {
-					logs.WithEF(err, fields).Warn("Failed to read node")
-					// TODO what to do with that ?
-				}
-				w.reports.addRawReport(node, content, fields)
-			case zk.EventNodeChildrenChanged:
-				logs.WithF(fields.WithField("event", e)).Warn("Received children changed event for a node")
-			default:
-				logs.WithF(fields.WithField("event", e)).Warn("Unknown event received")
-			}
-		case <-stop:
-			// todo remove watcher
+		content, _, childEvent, err := w.connection.GetW(node)
+		if err != nil {
+			logs.WithEF(err, w.fields).Warn("Failed to watch node")
 			return
 		}
-	}
+		w.reports.addRawReport(node, content, fields)
 
+		select {
+		case e := <-childEvent:
+			logs.WithF(fields.WithField("event", e)).Trace("Receiving event from node")
+			switch e.Type {
+			case zk.EventNodeDataChanged | zk.EventNodeCreated | zk.EventNotWatching:
+			// loop
+			case zk.EventNodeDeleted:
+				w.reports.removeNode(node)
+				return
+			}
+		case <-stop:
+			return
+		}
+
+	}
 }
