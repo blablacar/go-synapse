@@ -1,0 +1,23 @@
+
+
+apiHost: localhost
+apiPort: 8888
+
+routers:
+  - type: console
+#    reloadCommand: [/reload.sh]
+#    reloadTimeout: 1000
+#    socketFile: /run/haproxy.socket
+
+    services:
+#      - port: 4444
+#        watcher:
+#          type: zookeeper
+#          hosts: ['localhost:2181']
+#          path: /services/tripsearch
+
+      - port: 9999
+        watcher:
+          type: zookeeper
+          hosts: ['localhost:2181']
+          path: /services/api/myapi

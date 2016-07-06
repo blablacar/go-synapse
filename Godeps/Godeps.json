@@ -7,11 +7,6 @@
 	],
 	"Deps": [
 		{
-			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.8.7",
-			"Rev": "418b41d23a1bf978c06faea5313ba194650ac088"
-		},
-		{
 			"ImportPath": "github.com/Unknwon/com",
 			"Comment": "v1",
 			"Rev": "28b053d5a2923b87ce8c5a08f3af779894a72758"
@@ -22,8 +17,8 @@
 		},
 		{
 			"ImportPath": "github.com/blablacar/go-nerve/nerve",
-			"Comment": "v5-1-g7f5135d",
-			"Rev": "7f5135dc614376cb614c2ea03f235d4da8171cfd"
+			"Comment": "v5-3-g7b86291",
+			"Rev": "7b862919077b19dc27a41b568c359a57c2b6cea0"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",

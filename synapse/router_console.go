@@ -6,6 +6,8 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"io"
 	"os"
+	"fmt"
+	"sync"
 )
 
 type RouterConsole struct {
@@ -20,6 +22,10 @@ func NewRouterConsole() *RouterConsole {
 	}
 }
 
+func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
+	r.StartCommon(stop, stopWaiter, r)
+}
+
 func (r *RouterConsole) Init() error {
 	if err := r.commonInit(); err != nil {
 		return errs.WithEF(err, r.fields, "Failed to init common router")
@@ -32,6 +38,6 @@ func (r *RouterConsole) Update(backends []nerve.Report) error {
 	if err != nil {
 		return errs.WithEF(err, r.fields, "Failed to prepare router update")
 	}
-	println(res)
+	fmt.Fprintf(r.writer, "%s\n", res)
 	return nil
 }

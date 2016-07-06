@@ -70,6 +70,8 @@ func (n *nodes) getValues() []nerve.Report {
 	return r
 }
 
+/////////////////////////
+
 type WatcherZookeeper struct {
 	WatcherCommon
 	Hosts            []string

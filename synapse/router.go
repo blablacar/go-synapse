@@ -6,6 +6,7 @@ import (
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"sync"
+	"github.com/n0rad/go-erlog/logs"
 )
 
 type RouterCommon struct {
@@ -33,7 +34,8 @@ func (r *RouterCommon) commonInit() error {
 	return nil
 }
 
-func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
+func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGroup, router Router) {
+	stopWaiter.Add(1)
 	defer stopWaiter.Done()
 
 	events := make(chan []nerve.Report)
@@ -45,8 +47,8 @@ func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
 	for {
 		select {
 		case event := <-events:
-			if err := r.Update(event); err != nil {
-				// TODO handle err
+			if err := router.Update(event); err != nil {
+				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
 		case <-stop:
 			return
@@ -69,6 +71,8 @@ func RouterFromJson(content []byte) (Router, error) {
 	switch t.Type {
 	case "console":
 		typedRouter = NewRouterConsole()
+	case "haproxy":
+		typedRouter = NewRouterHaproxy()
 	default:
 		return nil, errs.WithF(fields, "Unsupported router type")
 	}
