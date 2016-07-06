@@ -1,15 +1,15 @@
 package synapse
 
 import (
-	"github.com/n0rad/go-erlog/errs"
 	"encoding/json"
-	"github.com/n0rad/go-erlog/data"
-	"sync"
 	"github.com/blablacar/go-nerve/nerve"
+	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
+	"sync"
 )
 
 type RouterCommon struct {
-	Type   string
+	Type     string
 	Services []*Service
 
 	fields data.Fields

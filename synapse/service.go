@@ -7,8 +7,8 @@ import (
 )
 
 type Service struct {
-	Port int
-	Watcher json.RawMessage
+	Port          int
+	Watcher       json.RawMessage
 	RouterOptions json.RawMessage
 
 	typedWatcher Watcher

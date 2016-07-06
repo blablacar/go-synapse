@@ -77,9 +77,9 @@ func Logger() macaron.Handler {
 		start := time.Now()
 
 		fields := data.WithField("method", ctx.Req.Method).
-		WithField("uri", ctx.Req.RequestURI).
-		WithField("ip", ctx.RemoteAddr()).
-		WithField("id", atomic.AddInt64(&reqCounter, 1))
+			WithField("uri", ctx.Req.RequestURI).
+			WithField("ip", ctx.RemoteAddr()).
+			WithField("id", atomic.AddInt64(&reqCounter, 1))
 		if logs.IsDebugEnabled() {
 			logs.WithF(fields).Debug("Request received")
 		}

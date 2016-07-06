@@ -1,15 +1,15 @@
 package synapse
 
 import (
+	"encoding/json"
+	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
-	"encoding/json"
 	"sync"
-	"github.com/blablacar/go-nerve/nerve"
 )
 
 type WatcherCommon struct {
-	Type            string
+	Type string
 
 	fields data.Fields
 }

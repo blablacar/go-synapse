@@ -1,11 +1,11 @@
 package synapse
 
 import (
-	"github.com/blablacar/go-nerve/nerve"
-	"os"
-	"io"
-	"github.com/n0rad/go-erlog/errs"
 	"encoding/json"
+	"github.com/blablacar/go-nerve/nerve"
+	"github.com/n0rad/go-erlog/errs"
+	"io"
+	"os"
 )
 
 type RouterConsole struct {

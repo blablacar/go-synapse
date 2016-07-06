@@ -10,14 +10,14 @@ routers:
 #    socketFile: /run/haproxy.socket
 
     services:
-      - port: 4444
-        watcher:
-          type: zookeeper
-          hosts: ['localhost:2181']
-          path: /services/tripsearch
+#      - port: 4444
+#        watcher:
+#          type: zookeeper
+#          hosts: ['localhost:2181']
+#          path: /services/tripsearch
 
       - port: 9999
         watcher:
           type: zookeeper
           hosts: ['localhost:2181']
-          path: /monitoring/tripsearch
+          path: /services/api/myapi

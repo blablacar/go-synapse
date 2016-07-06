@@ -2,17 +2,17 @@ package synapse
 
 import (
 	"encoding/json"
+	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"net"
-	"github.com/n0rad/go-erlog/data"
 	"sync"
 )
 
 type Synapse struct {
-	ApiHost          string
-	ApiPort          int
-	Routers          []json.RawMessage
+	ApiHost string
+	ApiPort int
+	Routers []json.RawMessage
 
 	fields           data.Fields
 	synapseVersion   string
@@ -39,7 +39,7 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	return nil
 }
 
-func (s *Synapse) Start(startStatus chan<-error) {
+func (s *Synapse) Start(startStatus chan<- error) {
 	logs.Info("Starting synapse")
 	for _, routers := range s.typedRouters {
 		s.routerStopWait.Add(1)
