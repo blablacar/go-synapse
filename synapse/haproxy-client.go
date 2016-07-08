@@ -86,8 +86,7 @@ func (hap *HaProxyClient) Init() error {
 }
 
 func (hap *HaProxyClient) Reload() error {
-	env := os.Environ()
-	env = append(env, "HAP_CONFIG="+hap.ConfigPath)
+	env := append(os.Environ(), "HAP_CONFIG="+hap.ConfigPath)
 	if err := nerve.ExecCommandFull(hap.ReloadCommand, env, hap.ReloadTimeoutInMilli); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to reload haproxy")
 	}

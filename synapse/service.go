@@ -26,28 +26,38 @@ type Service struct {
 }
 
 func (s *Service) Init(router Router) error {
+	s.fields = router.getFields().WithField("service", s.Name)
 	watcher, err := WatcherFromJson(s.Watcher)
 	if err != nil {
-		return errs.WithE(err, "Failed to read watcher")
+		return errs.WithEF(err, s.fields, "Failed to read watcher")
 	}
 	logs.WithF(watcher.GetFields()).Debug("Watcher loaded")
 	s.typedWatcher = watcher
 	if err := s.typedWatcher.Init(); err != nil {
-		return errs.WithE(err, "Failed to init watcher")
+		return errs.WithEF(err, s.fields, "Failed to init watcher")
 	}
 
-	typedRouterOptions, err := router.ParseRouterOptions(s.RouterOptions)
-	if err != nil {
-		return errs.WithEF(err, s.fields, "Failed to parse routerOptions")
+	if s.Name == "" {
+		s.Name = s.typedWatcher.GetServiceName()
+		s.fields = s.fields.WithField("service", s.Name)
 	}
-	s.typedRouterOptions = typedRouterOptions
 
-	typedServerOptions, err := router.ParseServerOptions(s.ServerOptions)
-	if err != nil {
-		return errs.WithEF(err, s.fields, "Failed to parse serverOptions")
+	if len([]byte(s.RouterOptions)) > 0 {
+		typedRouterOptions, err := router.ParseRouterOptions(s.RouterOptions)
+		if err != nil {
+			return errs.WithEF(err, s.fields, "Failed to parse routerOptions")
+		}
+		s.typedRouterOptions = typedRouterOptions
 	}
-	s.typedServerOptions = typedServerOptions
 
-	logs.WithF(s.fields.WithField("data", s)).Debug("Service loaded")
+	if len([]byte(s.RouterOptions)) > 0 {
+		typedServerOptions, err := router.ParseServerOptions(s.ServerOptions)
+		if err != nil {
+			return errs.WithEF(err, s.fields, "Failed to parse serverOptions")
+		}
+		s.typedServerOptions = typedServerOptions
+	}
+
+	logs.WithF(s.fields.WithField("data", s)).Info("Service loaded")
 	return nil
 }

@@ -30,8 +30,7 @@ routers:
         - timeout queue   100s
 
     services:
-      - name: toto1
-        watcher:
+      - watcher:
           type: zookeeper
           hosts: ['localhost:2181']
           path: /services/api/myapi
@@ -46,9 +45,8 @@ routers:
             - timeout server 2m
             - timeout connect 45s
 
-#      - port: 4444
-#        watcher:
-#          type: zookeeper
-#          hosts: ['localhost:2181']
-#          path: /services/tripsearch
+      - watcher:
+          type: zookeeper
+          hosts: ['localhost:2181']
+          path: /monitoring/api/myapi
 

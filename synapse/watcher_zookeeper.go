@@ -9,6 +9,7 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 	"sync"
 	"time"
+	"path"
 )
 
 type nodes struct {
@@ -70,8 +71,6 @@ func (n *nodes) getValues() []nerve.Report {
 	return r
 }
 
-
-
 type WatcherZookeeper struct {
 	WatcherCommon
 	Hosts            []string
@@ -89,6 +88,10 @@ func NewWatcherZookeeper() *WatcherZookeeper {
 		reports:        NewNodes(),
 	}
 	return w
+}
+
+func (w *WatcherZookeeper) GetServiceName() string {
+	return path.Base(w.Path)
 }
 
 func (w *WatcherZookeeper) Init() error {

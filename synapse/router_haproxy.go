@@ -98,10 +98,11 @@ func (r *RouterHaProxy) reportToHaProxyServer(report nerve.Report, serverOptions
 }
 
 func (r *RouterHaProxy) ParseServerOptions(data []byte) (interface{}, error) {
+
 	var serversOptions HapServerOptions
 	err := json.Unmarshal(data, &serversOptions)
 	if err != nil {
-		return nil, errs.WithEF(err, r.RouterCommon.fields, "Failed to Unmarshal serverOptions")
+		return nil, errs.WithEF(err, r.RouterCommon.fields.WithField("content", data), "Failed to Unmarshal serverOptions")
 	}
 	return serversOptions, nil
 }
@@ -110,7 +111,7 @@ func (r *RouterHaProxy) ParseRouterOptions(data []byte) (interface{}, error) {
 	routerOptions := HapRouterOptions{}
 	err := json.Unmarshal(data, &routerOptions)
 	if err != nil {
-		return nil, errs.WithEF(err, r.RouterCommon.fields, "Failed to Unmarshal routerOptions")
+		return nil, errs.WithEF(err, r.RouterCommon.fields.WithField("content", data), "Failed to Unmarshal routerOptions")
 	}
 	return routerOptions, nil
 }
