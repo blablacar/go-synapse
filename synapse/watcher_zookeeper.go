@@ -70,7 +70,7 @@ func (n *nodes) getValues() []nerve.Report {
 	return r
 }
 
-/////////////////////////
+
 
 type WatcherZookeeper struct {
 	WatcherCommon
@@ -106,7 +106,7 @@ func (w *WatcherZookeeper) Init() error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <- []nerve.Report) {
+func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
 	watcherStop := make(chan struct{})
@@ -115,7 +115,7 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	for {
 		select {
 		case <- w.reports.changed:
-			events <- w.reports.getValues()
+			events <- ServiceReport{service: s, reports: w.reports.getValues()}
 		case e := <-w.connectionEvents:
 			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
 			switch e.Type {

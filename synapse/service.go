@@ -4,17 +4,28 @@ import (
 	"encoding/json"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
+	"github.com/blablacar/go-nerve/nerve"
+	"github.com/n0rad/go-erlog/data"
 )
 
-type Service struct {
-	Port          int
-	Watcher       json.RawMessage
-	RouterOptions json.RawMessage
-
-	typedWatcher Watcher
+type ServiceReport struct {
+	service *Service
+	reports []nerve.Report
 }
 
-func (s *Service) Init() error {
+type Service struct {
+	Name               string
+	Watcher            json.RawMessage
+	RouterOptions      json.RawMessage
+	ServerOptions      json.RawMessage
+
+	fields             data.Fields
+	typedWatcher       Watcher
+	typedRouterOptions interface{}
+	typedServerOptions interface{}
+}
+
+func (s *Service) Init(router Router) error {
 	watcher, err := WatcherFromJson(s.Watcher)
 	if err != nil {
 		return errs.WithE(err, "Failed to read watcher")
@@ -24,5 +35,19 @@ func (s *Service) Init() error {
 	if err := s.typedWatcher.Init(); err != nil {
 		return errs.WithE(err, "Failed to init watcher")
 	}
+
+	typedRouterOptions, err := router.ParseRouterOptions(s.RouterOptions)
+	if err != nil {
+		return errs.WithEF(err, s.fields, "Failed to parse routerOptions")
+	}
+	s.typedRouterOptions = typedRouterOptions
+
+	typedServerOptions, err := router.ParseServerOptions(s.ServerOptions)
+	if err != nil {
+		return errs.WithEF(err, s.fields, "Failed to parse serverOptions")
+	}
+	s.typedServerOptions = typedServerOptions
+
+	logs.WithF(s.fields.WithField("data", s)).Debug("Service loaded")
 	return nil
 }

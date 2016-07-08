@@ -13,6 +13,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+	"math/rand"
 )
 
 var Version = "No Version Defined"
@@ -41,6 +43,8 @@ func waitForSignal() {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	var logLevel string
 	var version bool
 

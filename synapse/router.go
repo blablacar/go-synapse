@@ -2,7 +2,6 @@ package synapse
 
 import (
 	"encoding/json"
-	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"sync"
@@ -20,13 +19,15 @@ type Router interface {
 	Init() error
 	getFields() data.Fields
 	Start(stop chan struct{}, stopWaiter *sync.WaitGroup)
-	Update(backends []nerve.Report) error
+	Update(serviceReport ServiceReport) error
+	ParseServerOptions(data []byte) (interface{}, error)
+	ParseRouterOptions(data []byte) (interface{}, error)
 }
 
-func (r *RouterCommon) commonInit() error {
+func (r *RouterCommon) commonInit(router Router) error {
 	r.fields = data.WithField("type", r.Type)
 	for _, service := range r.Services {
-		if err := service.Init(); err != nil {
+		if err := service.Init(router); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
 		}
 	}
@@ -38,10 +39,10 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 	stopWaiter.Add(1)
 	defer stopWaiter.Done()
 
-	events := make(chan []nerve.Report)
+	events := make(chan ServiceReport)
 
 	for _, service := range r.Services {
-		go service.typedWatcher.Watch(stop, stopWaiter, events)
+		go service.typedWatcher.Watch(stop, stopWaiter, events, service)
 	}
 
 	for {

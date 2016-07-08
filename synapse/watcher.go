@@ -2,7 +2,6 @@ package synapse
 
 import (
 	"encoding/json"
-	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"sync"
@@ -17,7 +16,7 @@ type WatcherCommon struct {
 type Watcher interface {
 	Init() error
 	GetFields() data.Fields
-	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- []nerve.Report)
+	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service)
 }
 
 func (w *WatcherCommon) CommonInit() error {

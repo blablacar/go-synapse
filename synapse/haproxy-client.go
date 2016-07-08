@@ -9,32 +9,31 @@ import (
 	"io/ioutil"
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/blablacar/go-nerve/nerve"
+	"os"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
 global
-{{range .Global}}
+{{- range .Global}}
   {{.}}{{end}}
 
 defaults
-{{range .Defaults}}
+{{- range .Defaults}}
   {{.}}{{end}}
 
 {{range $key, $element := .Listen}}
 listen {{$key}}
-{{range $element}}
+{{- range $element}}
   {{.}}{{end}}
 {{end}}
-
 {{range $key, $element := .Frontend}}
-listen {{$key}}
-{{range $element}}
+frontend {{$key}}
+{{- range $element}}
   {{.}}{{end}}
 {{end}}
-
 {{range $key, $element := .Backend}}
-listen {{$key}}
-{{range $element}}
+backend {{$key}}
+{{- range $element}}
   {{.}}{{end}}
 {{end}}
 
@@ -51,7 +50,7 @@ type HaProxyConfig struct {
 type HaProxyClient struct {
 	HaProxyConfig
 	ConfigPath           string
-	SocketPath           string
+	//SocketPath           string
 	ReloadCommand        []string
 	ReloadTimeoutInMilli int
 	StatePath            string
@@ -62,6 +61,16 @@ type HaProxyClient struct {
 
 func (hap *HaProxyClient) Init() error {
 	hap.fields = data.WithField("config", hap.ConfigPath)
+
+	if hap.Listen == nil {
+		hap.Listen = make(map[string][]string)
+	}
+	if hap.Frontend == nil {
+		hap.Frontend = make(map[string][]string)
+	}
+	if hap.Backend == nil {
+		hap.Backend = make(map[string][]string)
+	}
 
 	if hap.ReloadTimeoutInMilli == 0 {
 		hap.ReloadTimeoutInMilli = 1000
@@ -77,7 +86,9 @@ func (hap *HaProxyClient) Init() error {
 }
 
 func (hap *HaProxyClient) Reload() error {
-	if err := nerve.ExecCommand(hap.ReloadCommand, hap.ReloadTimeoutInMilli); err != nil {
+	env := os.Environ()
+	env = append(env, "HAP_CONFIG="+hap.ConfigPath)
+	if err := nerve.ExecCommandFull(hap.ReloadCommand, env, hap.ReloadTimeoutInMilli); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to reload haproxy")
 	}
 	return nil
