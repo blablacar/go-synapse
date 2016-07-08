@@ -1,75 +1,14 @@
 package synapse
 
 import (
-	"encoding/json"
-	"github.com/blablacar/go-nerve/nerve"
-	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/samuel/go-zookeeper/zk"
 	"sync"
 	"time"
 	"strings"
+	"fmt"
 )
-
-type nodes struct {
-	sync.RWMutex
-	m       map[string]nerve.Report
-	changed chan struct{}
-}
-
-func NewNodes() nodes {
-	n := nodes{}
-	n.m = make(map[string]nerve.Report)
-	n.changed = make(chan struct{})
-	return n
-}
-
-func (n *nodes) addRawReport(name string, content []byte, failFields data.Fields) {
-	report := nerve.Report{}
-	if err := json.Unmarshal(content, &report); err != nil {
-		logs.WithEF(err, failFields).Warn("Failed to unmarshal")
-	}
-
-	n.Lock()
-	defer n.Unlock()
-	n.m[name] = report
-	n.changed <- struct{}{}
-}
-
-func (n *nodes) removeAll() {
-	n.Lock()
-	defer n.Unlock()
-	for k := range n.m {
-		delete(n.m, k)
-	}
-	n.changed <- struct{}{}
-
-}
-
-func (n *nodes) removeNode(name string) {
-	n.Lock()
-	defer n.Unlock()
-	delete(n.m, name)
-	n.changed <- struct{}{}
-}
-
-func (n *nodes) get(name string) (nerve.Report, bool) {
-	n.RLock()
-	defer n.RUnlock()
-	value, ok := n.m[name]
-	return value, ok
-}
-
-func (n *nodes) getValues() []nerve.Report {
-	n.RLock()
-	defer n.RUnlock()
-	r := []nerve.Report{}
-	for _, v := range n.m {
-		r = append(r, v)
-	}
-	return r
-}
 
 type WatcherZookeeper struct {
 	WatcherCommon
@@ -77,7 +16,7 @@ type WatcherZookeeper struct {
 	Path             string
 	TimeoutInMilli   int
 
-	reports          nodes
+	reports          reportMap
 	connection       *zk.Conn
 	connectionEvents <-chan zk.Event
 }
@@ -105,8 +44,17 @@ func (w *WatcherZookeeper) Init() error {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
 	w.connection = conn
+	w.connection.SetLogger(ZKLogger{w: w})
 	w.connectionEvents = ev
 	return nil
+}
+
+type ZKLogger struct {
+	w *WatcherZookeeper
+}
+
+func (zl ZKLogger) Printf(format string, data ...interface{}) {
+	logs.WithF(zl.w.fields).Debug("Zookeeper: " + fmt.Sprintf(format, data))
 }
 
 func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service) {
@@ -141,10 +89,19 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	defer doneWaiter.Done()
 
 	for {
+		exist, _, existEvent, err := w.connection.ExistsW(w.Path)
+		if !exist {
+			logs.WithF(w.fields).Warn("Path does not exists, waiting for creation")
+			select {
+			case <- existEvent:
+			case <-stop:
+				return
+			}
+		}
+
 		childs, _, rootEvents, err := w.connection.ChildrenW(w.Path)
 		if err != nil {
 			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
-			return
 		}
 
 		for _, child := range childs {
@@ -178,7 +135,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 	for {
 		content, _, childEvent, err := w.connection.GetW(node)
 		if err != nil {
-			logs.WithEF(err, w.fields).Warn("Failed to watch node")
+			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
 			return
 		}
 		w.reports.addRawReport(node, content, fields)

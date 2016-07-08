@@ -20,7 +20,7 @@ type HapRouterOptions struct {
 type HapServerOptions string
 
 
-func NewRouterHaproxy() *RouterHaProxy {
+func NewRouterHaProxy() *RouterHaProxy {
 	return &RouterHaProxy{}
 }
 

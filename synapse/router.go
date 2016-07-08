@@ -48,6 +48,7 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 	for {
 		select {
 		case event := <-events:
+			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
 			if err := router.Update(event); err != nil {
 				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
@@ -73,7 +74,7 @@ func RouterFromJson(content []byte) (Router, error) {
 	case "console":
 		typedRouter = NewRouterConsole()
 	case "haproxy":
-		typedRouter = NewRouterHaproxy()
+		typedRouter = NewRouterHaProxy()
 	default:
 		return nil, errs.WithF(fields, "Unsupported router type")
 	}

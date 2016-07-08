@@ -76,7 +76,7 @@ func (hap *HaProxyClient) Init() error {
 		hap.ReloadTimeoutInMilli = 1000
 	}
 
-	tmpl, err := template.New("ha-proxy config").Parse(haProxyConfigurationTemplate)
+	tmpl, err := template.New("ha-proxy-config").Parse(haProxyConfigurationTemplate)
 	if err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to parse haproxy config template")
 	}
@@ -86,6 +86,7 @@ func (hap *HaProxyClient) Init() error {
 }
 
 func (hap *HaProxyClient) Reload() error {
+	logs.WithF(hap.fields).Debug("Reloading haproxy")
 	env := append(os.Environ(), "HAP_CONFIG="+hap.ConfigPath)
 	if err := nerve.ExecCommandFull(hap.ReloadCommand, env, hap.ReloadTimeoutInMilli); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to reload haproxy")

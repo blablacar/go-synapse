@@ -35,15 +35,15 @@ routers:
           hosts: ['localhost:2181']
           path: /services/api/myapi
         serverOptions: check inter 2s rise 3 fall 2
-#        routerOptions:
-#          frontend:
-#            - mode tcp
-#            - timeout client 31s
-#            - bind 127.0.0.1:5679
-#          backend:
-#            - mode tcp
-#            - timeout server 2m
-#            - timeout connect 45s
+        routerOptions:
+          frontend:
+            - mode tcp
+            - timeout client 31s
+            - bind 127.0.0.1:5679
+          backend:
+            - mode tcp
+            - timeout server 2m
+            - timeout connect 45s
 
       - watcher:
           type: zookeeper
