@@ -19,15 +19,15 @@ routers:
         - mode http
         - bind 127.0.0.1:1936
         - stats enable
-        - stats hide-version
-        - stats realm Haproxy\ Statistics
+#        - stats hide-version
+#        - stats realm Haproxy\ Statistics
         - stats uri /
-        - stats refresh 5s
-        - stats auth admin:admin
-        - timeout client  100s
-        - timeout server  100s
-        - timeout connect 100s
-        - timeout queue   100s
+#        - stats refresh 5s
+#        - stats auth admin:admin
+#        - timeout client  100s
+#        - timeout server  100s
+#        - timeout connect 100s
+#        - timeout queue   100s
 
     services:
       - watcher:
@@ -35,15 +35,15 @@ routers:
           hosts: ['localhost:2181']
           path: /services/api/myapi
         serverOptions: check inter 2s rise 3 fall 2
-        routerOptions:
-          frontend:
-            - mode tcp
-            - timeout client 31s
-            - bind 127.0.0.1:5679
-          backend:
-            - mode tcp
-            - timeout server 2m
-            - timeout connect 45s
+#        routerOptions:
+#          frontend:
+#            - mode tcp
+#            - timeout client 31s
+#            - bind 127.0.0.1:5679
+#          backend:
+#            - mode tcp
+#            - timeout server 2m
+#            - timeout connect 45s
 
       - watcher:
           type: zookeeper

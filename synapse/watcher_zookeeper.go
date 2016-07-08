@@ -9,7 +9,7 @@ import (
 	"github.com/samuel/go-zookeeper/zk"
 	"sync"
 	"time"
-	"path"
+	"strings"
 )
 
 type nodes struct {
@@ -91,7 +91,7 @@ func NewWatcherZookeeper() *WatcherZookeeper {
 }
 
 func (w *WatcherZookeeper) GetServiceName() string {
-	return path.Base(w.Path)
+	return strings.Replace(w.Path, "/", "_", -1)[1:]
 }
 
 func (w *WatcherZookeeper) Init() error {

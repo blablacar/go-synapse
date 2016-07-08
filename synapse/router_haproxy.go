@@ -62,17 +62,25 @@ func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
 
 func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]string, []string) {
 	frontend := []string{}
-	for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Frontend {
-		frontend = append(frontend, option)
+	if serviceReport.service.typedRouterOptions != nil {
+		for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Frontend {
+			frontend = append(frontend, option)
+		}
 	}
 
 	backend := []string{}
-	for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Backend {
-		backend = append(backend, option)
+	if serviceReport.service.typedRouterOptions != nil {
+		for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Backend {
+			backend = append(backend, option)
+		}
 	}
 
+	var serverOptions HapServerOptions
+	if serviceReport.service.typedServerOptions != nil {
+		serverOptions = serviceReport.service.typedServerOptions.(HapServerOptions)
+	}
 	for _, report := range serviceReport.reports {
-		server := r.reportToHaProxyServer(report, serviceReport.service.typedServerOptions.(HapServerOptions))
+		server := r.reportToHaProxyServer(report, serverOptions)
 		backend = append(backend, server)
 	}
 
