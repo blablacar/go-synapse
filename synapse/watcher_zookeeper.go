@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 	"strings"
-	"fmt"
+	"github.com/blablacar/go-nerve/nerve"
 )
 
 type WatcherZookeeper struct {
@@ -17,7 +17,7 @@ type WatcherZookeeper struct {
 	TimeoutInMilli   int
 
 	reports          reportMap
-	connection       *zk.Conn
+	connection       *nerve.SharedZkConnection
 	connectionEvents <-chan zk.Event
 }
 
@@ -39,22 +39,13 @@ func (w *WatcherZookeeper) Init() error {
 	}
 	w.fields = w.fields.WithField("path", w.Path)
 
-	conn, ev, err := zk.Connect(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
+	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
 	if err != nil {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
 	w.connection = conn
-	w.connection.SetLogger(ZKLogger{w: w})
-	w.connectionEvents = ev
+	w.connectionEvents = w.connection.Subscribe()
 	return nil
-}
-
-type ZKLogger struct {
-	w *WatcherZookeeper
-}
-
-func (zl ZKLogger) Printf(format string, data ...interface{}) {
-	logs.WithF(zl.w.fields).Trace("Zookeeper: " + fmt.Sprintf(format, data))
 }
 
 func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service) {
@@ -97,7 +88,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	defer doneWaiter.Done()
 
 	for {
-		exist, _, existEvent, err := w.connection.ExistsW(w.Path)
+		exist, _, existEvent, err := w.connection.Conn.ExistsW(w.Path)
 		if !exist {
 			logs.WithF(w.fields).Warn("Path does not exists, waiting for creation")
 			select {
@@ -107,7 +98,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			}
 		}
 
-		childs, _, rootEvents, err := w.connection.ChildrenW(w.Path)
+		childs, _, rootEvents, err := w.connection.Conn.ChildrenW(w.Path)
 		if err != nil {
 			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
 		}
@@ -141,7 +132,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 	logs.WithF(fields).Debug("New node watcher")
 
 	for {
-		content, _, childEvent, err := w.connection.GetW(node)
+		content, _, childEvent, err := w.connection.Conn.GetW(node)
 		if err != nil {
 			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
 			return

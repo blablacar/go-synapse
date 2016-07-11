@@ -17,8 +17,8 @@
 		},
 		{
 			"ImportPath": "github.com/blablacar/go-nerve/nerve",
-			"Comment": "v5-5-g6526f21",
-			"Rev": "6526f215d597c1bc54b4c2ed46ea340a36aac1fb"
+			"Comment": "v5-8-g47b0523",
+			"Rev": "47b0523a755c105ee9a0fc0960547e634bcf65bc"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",
