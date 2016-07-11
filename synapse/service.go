@@ -13,6 +13,15 @@ type ServiceReport struct {
 	reports []nerve.Report
 }
 
+func (s *ServiceReport) HasActiveServers() bool {
+	for _, report := range s.reports {
+		if report.Available {
+			return true
+		}
+	}
+	return false
+}
+
 type Service struct {
 	Name               string
 	Watcher            json.RawMessage

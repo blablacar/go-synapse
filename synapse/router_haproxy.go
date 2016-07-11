@@ -19,7 +19,6 @@ type HapRouterOptions struct {
 }
 type HapServerOptions string
 
-
 func NewRouterHaProxy() *RouterHaProxy {
 	return &RouterHaProxy{}
 }
@@ -67,6 +66,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 			frontend = append(frontend, option)
 		}
 	}
+	frontend = append(frontend, "default_backend " + serviceReport.service.Name)
 
 	backend := []string{}
 	if serviceReport.service.typedRouterOptions != nil {
@@ -96,8 +96,10 @@ func (r *RouterHaProxy) reportToHaProxyServer(report nerve.Report, serverOptions
 	buffer.WriteString(":")
 	buffer.WriteString(strconv.Itoa(report.Port))
 	buffer.WriteString(" ")
-	buffer.WriteString("weight ")
-	buffer.WriteString(strconv.Itoa(int(report.Weight)))
+	if report.Weight != nil {
+		buffer.WriteString("weight ")
+		buffer.WriteString(strconv.Itoa(int(*report.Weight)))
+	}
 	buffer.WriteString(" ")
 	buffer.WriteString(report.HaProxyServerOptions)
 	buffer.WriteString(" ")

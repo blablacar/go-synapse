@@ -106,7 +106,7 @@ func (hap *HaProxyClient) writeConfig() error {
 
 	templated := b.Bytes()
 	if logs.IsTraceEnabled() {
-		logs.WithF(hap.fields.WithField("templated", templated)).Trace("Templated configuration file")
+		logs.WithF(hap.fields.WithField("templated", string(templated))).Trace("Templated configuration file")
 	}
 	if err := ioutil.WriteFile(hap.ConfigPath, templated, 0644); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to write configuration file")

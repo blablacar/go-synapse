@@ -54,7 +54,7 @@ type ZKLogger struct {
 }
 
 func (zl ZKLogger) Printf(format string, data ...interface{}) {
-	logs.WithF(zl.w.fields).Debug("Zookeeper: " + fmt.Sprintf(format, data))
+	logs.WithF(zl.w.fields).Trace("Zookeeper: " + fmt.Sprintf(format, data))
 }
 
 func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service) {
@@ -66,13 +66,21 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	for {
 		select {
 		case <- w.reports.changed:
-			events <- ServiceReport{service: s, reports: w.reports.getValues()}
+			reports := w.reports.getValues()
+			logs.WithF(w.fields.WithField("data", reports)).Debug("Sending report")
+			events <-ServiceReport{service: s, reports: reports}
 		case e := <-w.connectionEvents:
 			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
 			switch e.Type {
 			case zk.EventSession | zk.EventType(0):
 				if e.State == zk.StateHasSession {
 					go w.watchRoot(watcherStop, &watcherStopWaiter)
+				} else if e.State == zk.StateExpired || e.State == zk.StateDisconnected {
+					close(watcherStop)
+					watcherStopWaiter.Wait()
+
+					watcherStop = make(chan struct{})
+					watcherStopWaiter = sync.WaitGroup{}
 				}
 			}
 		case <-stop:

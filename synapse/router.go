@@ -12,6 +12,7 @@ type RouterCommon struct {
 	Type     string
 	Services []*Service
 
+	lastEvent ServiceReport
 	fields data.Fields
 }
 
@@ -48,10 +49,15 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 	for {
 		select {
 		case event := <-events:
+			if !event.HasActiveServers() {
+				logs.WithF(event.service.fields).Error("Receiving report with no active server. Keeping previous report")
+				continue
+			}
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
 			if err := router.Update(event); err != nil {
 				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
+			r.lastEvent = event
 		case <-stop:
 			return
 		}

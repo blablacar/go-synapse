@@ -24,7 +24,7 @@ func NewNodes() reportMap {
 func (n *reportMap) addRawReport(name string, content []byte, failFields data.Fields) {
 	report := nerve.Report{}
 	if err := json.Unmarshal(content, &report); err != nil {
-		logs.WithEF(err, failFields).Warn("Failed to unmarshal")
+		logs.WithEF(err, failFields).Warn("Failed to unmarshal report")
 	}
 
 	n.Lock()

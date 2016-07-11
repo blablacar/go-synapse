@@ -50,14 +50,12 @@ func ExecCommand(cmd []string, timeoutInMilli int) error {
 	return ExecCommandFull(cmd, []string{}, timeoutInMilli)
 }
 
-func ExecCommandFull(cmd []string, env[]string, timeoutInMilli int) error {
+func ExecCommandFull(cmd []string, env []string, timeoutInMilli int) error {
 	command := exec.Command(cmd[0], cmd[1:]...)
 	var b bytes.Buffer
 	command.Stdout = &b
 	command.Stderr = &b
-	if len(env) != 0 {
-		command.Env = env
-	}
+	command.Env = env
 
 	if err := command.Start(); err != nil {
 		return errs.WithEF(err, data.WithField("cmd", cmd), "Failed to start command")
