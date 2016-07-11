@@ -7,20 +7,24 @@ import (
 	"github.com/n0rad/go-erlog/logs"
 	"net"
 	"sync"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Synapse struct {
-	ApiHost string
-	ApiPort int
-	Routers []json.RawMessage
+	ApiHost                 string
+	ApiPort                 int
+	Routers                 []json.RawMessage
 
-	fields           data.Fields
-	synapseVersion   string
-	synapseBuildTime string
-	apiListener      net.Listener
-	typedRouters     []Router
-	routerStopper    chan struct{}
-	routerStopWait   sync.WaitGroup
+	serviceAvailableCount   *prometheus.GaugeVec
+	serviceUnavailableCount *prometheus.GaugeVec
+
+	fields                  data.Fields
+	synapseVersion          string
+	synapseBuildTime        string
+	apiListener             net.Listener
+	typedRouters            []Router
+	routerStopper           chan struct{}
+	routerStopWait          sync.WaitGroup
 }
 
 func (s *Synapse) Init(version string, buildTime string) error {
@@ -28,8 +32,30 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	s.synapseVersion = version
 	s.routerStopper = make(chan struct{})
 
+	s.serviceAvailableCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "synapse",
+			Name:      "service_available_count",
+			Help:      "service available status",
+		}, []string{"service"})
+
+	s.serviceUnavailableCount = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "synapse",
+			Name:      "service_unavailable_count",
+			Help:      "service unavailable status",
+		}, []string{"service"})
+
+	if err := prometheus.Register(s.serviceAvailableCount); err != nil {
+		return errs.WithEF(err, s.fields, "Failed to register prometheus service_available_count")
+	}
+
+	if err := prometheus.Register(s.serviceUnavailableCount); err != nil {
+		return errs.WithEF(err, s.fields, "Failed to register prometheus service_unavailable_count")
+	}
+
 	for _, data := range s.Routers {
-		router, err := RouterFromJson(data)
+		router, err := RouterFromJson(data, s)
 		if err != nil {
 			return errs.WithE(err, "Failed to init router")
 		}
@@ -39,7 +65,7 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	return nil
 }
 
-func (s *Synapse) Start(startStatus chan<- error) {
+func (s *Synapse) Start(startStatus chan <- error) {
 	logs.Info("Starting synapse")
 	for _, routers := range s.typedRouters {
 		go routers.Start(s.routerStopper, &s.routerStopWait)

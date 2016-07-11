@@ -81,7 +81,7 @@ func Logger() macaron.Handler {
 			WithField("ip", ctx.RemoteAddr()).
 			WithField("id", atomic.AddInt64(&reqCounter, 1))
 		if logs.IsDebugEnabled() {
-			logs.WithF(fields).Debug("Request received")
+			logs.WithF(fields).Trace("Request received")
 		}
 
 		rw := ctx.Resp.(macaron.ResponseWriter)
@@ -93,7 +93,7 @@ func Logger() macaron.Handler {
 			if rw.Status() >= 500 && rw.Status() < 600 {
 				lvl = logs.ERROR
 			} else {
-				lvl = logs.INFO
+				lvl = logs.DEBUG
 			}
 
 			logs.LogEntry(&logs.Entry{

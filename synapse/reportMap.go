@@ -21,6 +21,13 @@ func NewNodes() reportMap {
 	return n
 }
 
+func (n *reportMap) setNoNodes() {
+	n.Lock()
+	defer n.Unlock()
+	n.m = make(map[string]nerve.Report)
+	n.changed <- struct{}{}
+}
+
 func (n *reportMap) addRawReport(name string, content []byte, failFields data.Fields) {
 	report := nerve.Report{}
 	if err := json.Unmarshal(content, &report); err != nil {

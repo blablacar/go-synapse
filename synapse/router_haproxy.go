@@ -27,8 +27,8 @@ func (r *RouterHaProxy) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
 	r.StartCommon(stop, stopWaiter, r)
 }
 
-func (r *RouterHaProxy) Init() error {
-	if err := r.commonInit(r); err != nil {
+func (r *RouterHaProxy) Init(s *Synapse) error {
+	if err := r.commonInit(r, s); err != nil {
 		return errs.WithEF(err, r.RouterCommon.fields, "Failed to init common router")
 	}
 	if err := r.HaProxyClient.Init(); err != nil {

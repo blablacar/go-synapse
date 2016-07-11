@@ -91,6 +91,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 		exist, _, existEvent, err := w.connection.Conn.ExistsW(w.Path)
 		if !exist {
 			logs.WithF(w.fields).Warn("Path does not exists, waiting for creation")
+			w.reports.setNoNodes()
 			select {
 			case <- existEvent:
 			case <-stop:
@@ -103,9 +104,13 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
 		}
 
-		for _, child := range childs {
-			if _, ok := w.reports.get(child); !ok {
-				go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
+		if len(childs) == 0 {
+			w.reports.setNoNodes()
+		} else {
+			for _, child := range childs {
+				if _, ok := w.reports.get(child); !ok {
+					go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
+				}
 			}
 		}
 

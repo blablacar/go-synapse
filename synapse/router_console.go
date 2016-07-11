@@ -25,8 +25,8 @@ func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
 	r.StartCommon(stop, stopWaiter, r)
 }
 
-func (r *RouterConsole) Init() error {
-	if err := r.commonInit(r); err != nil {
+func (r *RouterConsole) Init(s *Synapse) error {
+	if err := r.commonInit(r, s); err != nil {
 		return errs.WithEF(err, r.fields, "Failed to init common router")
 	}
 	return nil

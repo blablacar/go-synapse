@@ -22,6 +22,18 @@ func (s *ServiceReport) HasActiveServers() bool {
 	return false
 }
 
+func (s *ServiceReport) AvailableUnavailable() (int, int) {
+	var available, unavailable int
+	for _, report := range s.reports {
+		if report.Available {
+			available++
+		} else {
+			unavailable++
+		}
+	}
+	return available, unavailable
+}
+
 type Service struct {
 	Name               string
 	Watcher            json.RawMessage

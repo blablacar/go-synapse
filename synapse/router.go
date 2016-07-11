@@ -9,15 +9,16 @@ import (
 )
 
 type RouterCommon struct {
-	Type     string
-	Services []*Service
+	Type      string
+	Services  []*Service
 
+	synapse   *Synapse
 	lastEvent *ServiceReport
-	fields data.Fields
+	fields    data.Fields
 }
 
 type Router interface {
-	Init() error
+	Init(s *Synapse) error
 	getFields() data.Fields
 	Start(stop chan struct{}, stopWaiter *sync.WaitGroup)
 	Update(serviceReport ServiceReport) error
@@ -25,8 +26,9 @@ type Router interface {
 	ParseRouterOptions(data []byte) (interface{}, error)
 }
 
-func (r *RouterCommon) commonInit(router Router) error {
+func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
 	r.fields = data.WithField("type", r.Type)
+	r.synapse = s
 	for _, service := range r.Services {
 		if err := service.Init(router); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
@@ -50,6 +52,9 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 		select {
 		case event := <-events:
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
+			available, unavailable := event.AvailableUnavailable()
+			r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
+			r.synapse.serviceUnavailableCount.WithLabelValues(event.service.Name).Set(float64(unavailable))
 			if !event.HasActiveServers() {
 				if r.lastEvent == nil {
 					logs.WithF(event.service.fields).Warn("First Report has no active server. Not declaring in router")
@@ -74,7 +79,7 @@ func (r *RouterCommon) getFields() data.Fields {
 	return r.fields
 }
 
-func RouterFromJson(content []byte) (Router, error) {
+func RouterFromJson(content []byte, s *Synapse) (Router, error) {
 	t := &RouterCommon{}
 	if err := json.Unmarshal([]byte(content), t); err != nil {
 		return nil, errs.WithE(err, "Failed to unmarshall check type")
@@ -95,7 +100,7 @@ func RouterFromJson(content []byte) (Router, error) {
 		return nil, errs.WithEF(err, fields, "Failed to unmarshall router")
 	}
 
-	if err := typedRouter.Init(); err != nil {
+	if err := typedRouter.Init(s); err != nil {
 		return nil, errs.WithEF(err, fields, "Failed to init router")
 	}
 	return typedRouter, nil
