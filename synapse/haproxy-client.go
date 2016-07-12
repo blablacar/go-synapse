@@ -10,6 +10,7 @@ import (
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/blablacar/go-nerve/nerve"
 	"os"
+	"time"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
@@ -49,14 +50,16 @@ type HaProxyConfig struct {
 
 type HaProxyClient struct {
 	HaProxyConfig
-	ConfigPath           string
+	ConfigPath               string
 	//SocketPath           string
-	ReloadCommand        []string
-	ReloadTimeoutInMilli int
-	StatePath            string
+	ReloadCommand            []string
+	ReloadMinIntervalInMilli int
+	ReloadTimeoutInMilli     int
+	StatePath                string
 
-	template             *template.Template
-	fields               data.Fields
+	lastReload               time.Time
+	template                 *template.Template
+	fields                   data.Fields
 }
 
 func (hap *HaProxyClient) Init() error {
@@ -70,6 +73,10 @@ func (hap *HaProxyClient) Init() error {
 	}
 	if hap.Backend == nil {
 		hap.Backend = make(map[string][]string)
+	}
+
+	if hap.ReloadMinIntervalInMilli == 0 {
+		hap.ReloadMinIntervalInMilli = 500
 	}
 
 	if hap.ReloadTimeoutInMilli == 0 {
@@ -87,7 +94,16 @@ func (hap *HaProxyClient) Init() error {
 
 func (hap *HaProxyClient) Reload() error {
 	logs.WithF(hap.fields).Debug("Reloading haproxy")
-	env := append(os.Environ(), "HAP_CONFIG="+hap.ConfigPath)
+	env := append(os.Environ(), "HAP_CONFIG=" + hap.ConfigPath)
+
+	waitDuration := hap.lastReload.Add(time.Duration(hap.ReloadMinIntervalInMilli)*time.Millisecond).Sub(time.Now())
+	if waitDuration > 0 {
+		logs.WithF(hap.fields.WithField("wait", waitDuration)).Debug("Reloading too fast")
+		time.Sleep(waitDuration)
+	}
+	defer func() {
+		hap.lastReload = time.Now()
+	}()
 	if err := nerve.ExecCommandFull(hap.ReloadCommand, env, hap.ReloadTimeoutInMilli); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to reload haproxy")
 	}
@@ -98,7 +114,7 @@ func (hap *HaProxyClient) writeConfig() error {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
 	if err := hap.template.Execute(writer, hap); err != nil {
-		return errs.WithEF(err, hap.fields, "Failed to ")
+		return errs.WithEF(err, hap.fields, "Failed to temlate haproxy configuration file")
 	}
 	if err := writer.Flush(); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to flush buffer")
