@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 	"math/rand"
+	"runtime"
+	"strconv"
 )
 
 var Version = "No Version Defined"
@@ -42,8 +44,42 @@ func waitForSignal() {
 	logs.Debug("Stop signal received")
 }
 
+//func trace() {
+//	// We don't know how big the traces are, so grow a few times if they don't fit. Start large, though.
+//	n := 10000
+//	if all {
+//		n = 100000
+//	}
+//	var trace []byte
+//	for i := 0; i < 5; i++ {
+//		trace = make([]byte, n)
+//		nbytes := runtime.Stack(trace, all)
+//		if nbytes < len(trace) {
+//			return trace[:nbytes]
+//		}
+//		n *= 2
+//	}
+//	return trace
+//
+//}
+
+func sigQuitThreadDump() {
+	sigChan := make(chan os.Signal)
+	go func() {
+		for _ = range sigChan {
+			stacktrace := make([]byte, 10<<10)
+			length := runtime.Stack(stacktrace, true)
+			fmt.Println(string(stacktrace[:length]))
+
+			ioutil.WriteFile("/tmp/" + strconv.Itoa(os.Getpid()) + ".dump", stacktrace[:length], 0644)
+		}
+	}()
+	signal.Notify(sigChan, syscall.SIGQUIT)
+}
+
 func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
+	sigQuitThreadDump()
 
 	var logLevel string
 	var version bool

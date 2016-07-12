@@ -13,6 +13,7 @@ routers:
       - maxconn 32000
       - ulimit-n 65536
       - daemon
+      - stats socket /tmp/hap.socket level admin
 
     listen:
       stats:

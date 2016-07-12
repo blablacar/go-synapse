@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"strconv"
 	"encoding/json"
+	"github.com/n0rad/go-erlog/logs"
 )
 
 type RouterHaProxy struct {
@@ -45,16 +46,49 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 	return nil
 }
 
+func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
+	previous := r.lastEvents[report.service]
+
+	if previous == nil || len(previous.reports) != len(report.reports) {
+		logs.WithF(r.RouterCommon.fields).Debug("Number of Server has changed. Reload needed")
+		return false
+	}
+
+	for _, new := range report.reports {
+		found := false
+		for _, old := range previous.reports {
+			if new.Host == old.Host &&
+			new.Port == old.Port &&
+			new.Name == old.Name &&
+			new.HaProxyServerOptions == old.HaProxyServerOptions {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing of options has changed")
+			return false
+		}
+	}
+
+	return true
+}
+
 func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
 	front, back := r.toFrontendAndBackend(serviceReport)
 	r.Frontend[serviceReport.service.Name] = front
 	r.Backend[serviceReport.service.Name] = back
 
-	if err := r.writeConfig(); err != nil {
-		return errs.WithEF(err, r.RouterCommon.fields, "Failed to write haproxy configuration")
-	}
-	if err := r.Reload(); err != nil {
-		return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
+	if !r.isSameServers(serviceReport) || r.socketPath == "" {
+		if err := r.Reload(); err != nil {
+			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
+		}
+	} else if err := r.SocketUpdate(); err != nil {
+		logs.WithEF(err, r.RouterCommon.fields).Error("Update by Socket failed. Reloading instead")
+		if err := r.Reload(); err != nil {
+			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
+		}
 	}
 	return nil
 }
