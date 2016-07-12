@@ -13,7 +13,7 @@ type RouterCommon struct {
 	Services  []*Service
 
 	synapse   *Synapse
-	lastEvent *ServiceReport
+	lastEvents map[*Service]*ServiceReport
 	fields    data.Fields
 }
 
@@ -29,6 +29,7 @@ type Router interface {
 func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
 	r.fields = data.WithField("type", r.Type)
 	r.synapse = s
+	r.lastEvents = make(map[*Service]*ServiceReport)
 	for _, service := range r.Services {
 		if err := service.Init(router); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
@@ -56,19 +57,19 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 			r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
 			r.synapse.serviceUnavailableCount.WithLabelValues(event.service.Name).Set(float64(unavailable))
 			if !event.HasActiveServers() {
-				if r.lastEvent == nil {
+				if r.lastEvents[event.service] == nil {
 					logs.WithF(event.service.fields).Warn("First Report has no active server. Not declaring in router")
 				} else {
 					logs.WithF(event.service.fields).Error("Receiving report with no active server. Keeping previous report")
 				}
 				continue
-			} else if r.lastEvent == nil || r.lastEvent.HasActiveServers() != event.HasActiveServers() {
+			} else if r.lastEvents[event.service] == nil || r.lastEvents[event.service].HasActiveServers() != event.HasActiveServers() {
 				logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
 			}
 			if err := router.Update(event); err != nil {
 				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
-			r.lastEvent = &event
+			r.lastEvents[event.service] = &event
 		case <-stop:
 			return
 		}
