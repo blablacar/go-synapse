@@ -5,26 +5,26 @@ import (
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
+	"github.com/prometheus/client_golang/prometheus"
 	"net"
 	"sync"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Synapse struct {
-	ApiHost                 string
-	ApiPort                 int
-	Routers                 []json.RawMessage
+	ApiHost string
+	ApiPort int
+	Routers []json.RawMessage
 
 	serviceAvailableCount   *prometheus.GaugeVec
 	serviceUnavailableCount *prometheus.GaugeVec
 
-	fields                  data.Fields
-	synapseVersion          string
-	synapseBuildTime        string
-	apiListener             net.Listener
-	typedRouters            []Router
-	routerStopper           chan struct{}
-	routerStopWait          sync.WaitGroup
+	fields           data.Fields
+	synapseVersion   string
+	synapseBuildTime string
+	apiListener      net.Listener
+	typedRouters     []Router
+	routerStopper    chan struct{}
+	routerStopWait   sync.WaitGroup
 }
 
 func (s *Synapse) Init(version string, buildTime string) error {
@@ -65,7 +65,7 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	return nil
 }
 
-func (s *Synapse) Start(startStatus chan <- error) {
+func (s *Synapse) Start(startStatus chan<- error) {
 	logs.Info("Starting synapse")
 	for _, routers := range s.typedRouters {
 		go routers.Start(s.routerStopper, &s.routerStopWait)

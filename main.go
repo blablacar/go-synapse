@@ -10,13 +10,13 @@ import (
 	_ "github.com/n0rad/go-erlog/register"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/signal"
-	"syscall"
-	"time"
-	"math/rand"
 	"runtime"
 	"strconv"
+	"syscall"
+	"time"
 )
 
 var Version = "No Version Defined"
@@ -66,12 +66,12 @@ func waitForSignal() {
 func sigQuitThreadDump() {
 	sigChan := make(chan os.Signal)
 	go func() {
-		for _ = range sigChan {
+		for range sigChan {
 			stacktrace := make([]byte, 10<<10)
 			length := runtime.Stack(stacktrace, true)
 			fmt.Println(string(stacktrace[:length]))
 
-			ioutil.WriteFile("/tmp/" + strconv.Itoa(os.Getpid()) + ".dump", stacktrace[:length], 0644)
+			ioutil.WriteFile("/tmp/"+strconv.Itoa(os.Getpid())+".dump", stacktrace[:length], 0644)
 		}
 	}()
 	signal.Notify(sigChan, syscall.SIGQUIT)

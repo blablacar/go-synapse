@@ -1,13 +1,13 @@
 package synapse
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/errs"
-	"sync"
-	"bytes"
-	"strconv"
-	"encoding/json"
 	"github.com/n0rad/go-erlog/logs"
+	"strconv"
+	"sync"
 )
 
 type RouterHaProxy struct {
@@ -58,9 +58,9 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 		found := false
 		for _, old := range previous.reports {
 			if new.Host == old.Host &&
-			new.Port == old.Port &&
-			new.Name == old.Name &&
-			new.HaProxyServerOptions == old.HaProxyServerOptions {
+				new.Port == old.Port &&
+				new.Name == old.Name &&
+				new.HaProxyServerOptions == old.HaProxyServerOptions {
 				found = true
 				break
 			}
@@ -100,7 +100,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend " + serviceReport.service.Name)
+	frontend = append(frontend, "default_backend "+serviceReport.service.Name)
 
 	backend := []string{}
 	if serviceReport.service.typedRouterOptions != nil {

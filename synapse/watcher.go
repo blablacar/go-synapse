@@ -16,7 +16,7 @@ type WatcherCommon struct {
 type Watcher interface {
 	Init() error
 	GetFields() data.Fields
-	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service)
+	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service)
 	GetServiceName() string
 }
 

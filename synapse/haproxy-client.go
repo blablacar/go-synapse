@@ -1,19 +1,19 @@
 package synapse
 
 import (
-	"text/template"
-	"github.com/n0rad/go-erlog/errs"
-	"github.com/n0rad/go-erlog/data"
 	"bufio"
 	"bytes"
-	"io/ioutil"
-	"github.com/n0rad/go-erlog/logs"
 	"github.com/blablacar/go-nerve/nerve"
-	"os"
-	"time"
+	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
+	"github.com/n0rad/go-erlog/logs"
+	"io/ioutil"
 	"net"
+	"os"
 	"regexp"
 	"strings"
+	"text/template"
+	"time"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
@@ -59,11 +59,11 @@ type HaProxyClient struct {
 	ReloadTimeoutInMilli     int
 	StatePath                string
 
-	socketPath               string
-	weightRegex              *regexp.Regexp
-	lastReload               time.Time
-	template                 *template.Template
-	fields                   data.Fields
+	socketPath  string
+	weightRegex *regexp.Regexp
+	lastReload  time.Time
+	template    *template.Template
+	fields      data.Fields
 }
 
 func (hap *HaProxyClient) Init() error {
@@ -106,7 +106,7 @@ func (hap *HaProxyClient) findSocketPath() string {
 	for _, str := range hap.Global {
 		if strings.HasPrefix(str, "stats socket ") {
 			start := len("stats socket ")
-			return strings.TrimSpace(str[start:start + strings.Index(str[start:], " ")])
+			return strings.TrimSpace(str[start : start+strings.Index(str[start:], " ")])
 		}
 	}
 	return ""
@@ -118,7 +118,7 @@ func (hap *HaProxyClient) Reload() error {
 	}
 
 	logs.WithF(hap.fields).Debug("Reloading haproxy")
-	env := append(os.Environ(), "HAP_CONFIG=" + hap.ConfigPath)
+	env := append(os.Environ(), "HAP_CONFIG="+hap.ConfigPath)
 
 	waitDuration := hap.lastReload.Add(time.Duration(hap.ReloadMinIntervalInMilli) * time.Millisecond).Sub(time.Now())
 	if waitDuration > 0 {
@@ -139,6 +139,10 @@ func (hap *HaProxyClient) SocketUpdate() error {
 		return errs.WithF(hap.fields, "No socket file specified. Cannot update")
 	}
 	logs.WithF(hap.fields).Debug("Updating haproxy by socket")
+
+	if err := hap.writeConfig(); err != nil { // just to stay in sync
+		logs.WithEF(err, hap.fields).Warn("Failed to write configuration file")
+	}
 
 	conn, err := net.Dial("unix", hap.socketPath)
 	if err != nil {
@@ -164,9 +168,9 @@ func (hap *HaProxyClient) SocketUpdate() error {
 	count, err := conn.Write(commands)
 	if count != len(commands) || err != nil {
 		return errs.WithEF(err, hap.fields.
-		WithField("written", count).
-		WithField("len", len(commands)).
-		WithField("command", string(commands)), "Failed to write command to haproxy")
+			WithField("written", count).
+			WithField("len", len(commands)).
+			WithField("command", string(commands)), "Failed to write command to haproxy")
 	}
 
 	buff := bufio.NewReader(conn)
@@ -200,4 +204,3 @@ func (hap *HaProxyClient) writeConfig() error {
 	}
 	return nil
 }
-

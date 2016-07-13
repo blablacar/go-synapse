@@ -1,20 +1,20 @@
 package synapse
 
 import (
+	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/samuel/go-zookeeper/zk"
+	"strings"
 	"sync"
 	"time"
-	"strings"
-	"github.com/blablacar/go-nerve/nerve"
 )
 
 type WatcherZookeeper struct {
 	WatcherCommon
-	Hosts            []string
-	Path             string
-	TimeoutInMilli   int
+	Hosts          []string
+	Path           string
+	TimeoutInMilli int
 
 	reports          reportMap
 	connection       *nerve.SharedZkConnection
@@ -39,7 +39,7 @@ func (w *WatcherZookeeper) Init() error {
 	}
 	w.fields = w.fields.WithField("path", w.Path)
 
-	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
+	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli)*time.Millisecond)
 	if err != nil {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
@@ -48,7 +48,7 @@ func (w *WatcherZookeeper) Init() error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <-ServiceReport, s *Service) {
+func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
 	watcherStop := make(chan struct{})
@@ -56,10 +56,10 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 
 	for {
 		select {
-		case <- w.reports.changed:
+		case <-w.reports.changed:
 			reports := w.reports.getValues()
 			logs.WithF(w.fields.WithField("data", reports)).Debug("Sending report")
-			events <-ServiceReport{service: s, reports: reports}
+			events <- ServiceReport{service: s, reports: reports}
 		case e := <-w.connectionEvents:
 			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
 			switch e.Type {
@@ -93,7 +93,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			logs.WithF(w.fields).Warn("Path does not exists, waiting for creation")
 			w.reports.setNoNodes()
 			select {
-			case <- existEvent:
+			case <-existEvent:
 			case <-stop:
 				return
 			}
@@ -109,7 +109,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 		} else {
 			for _, child := range childs {
 				if _, ok := w.reports.get(child); !ok {
-					go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
+					go w.watchNode(w.Path+"/"+child, stop, doneWaiter)
 				}
 			}
 		}

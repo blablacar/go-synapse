@@ -1,11 +1,11 @@
 package synapse
 
 import (
-	"sync"
-	"github.com/blablacar/go-nerve/nerve"
 	"encoding/json"
-	"github.com/n0rad/go-erlog/logs"
+	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/logs"
+	"sync"
 )
 
 type reportMap struct {

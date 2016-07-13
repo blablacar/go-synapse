@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
-	"sync"
 	"github.com/n0rad/go-erlog/logs"
+	"sync"
 )
 
 type RouterCommon struct {
-	Type      string
-	Services  []*Service
+	Type     string
+	Services []*Service
 
-	synapse   *Synapse
+	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
-	fields    data.Fields
+	fields     data.Fields
 }
 
 type Router interface {

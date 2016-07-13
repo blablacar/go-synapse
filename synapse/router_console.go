@@ -2,10 +2,10 @@ package synapse
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/n0rad/go-erlog/errs"
 	"io"
 	"os"
-	"fmt"
 	"sync"
 )
 
