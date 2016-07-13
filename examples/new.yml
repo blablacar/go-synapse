@@ -9,11 +9,11 @@ routers:
     reloadCommand: [./examples/haproxy_reload.sh]
 
     global:
-      - log 127.0.0.1   local5 notice
+#      - log 127.0.0.1   local5 notice
       - maxconn 32000
       - ulimit-n 65536
       - daemon
-      - stats socket /tmp/hap.socket level admin
+      - stats   socket  /tmp/hap.socket level admin
 
     listen:
       stats:

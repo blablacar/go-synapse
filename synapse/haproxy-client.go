@@ -11,7 +11,6 @@ import (
 	"net"
 	"os"
 	"regexp"
-	"strings"
 	"text/template"
 	"time"
 )
@@ -60,6 +59,7 @@ type HaProxyClient struct {
 	StatePath                string
 
 	socketPath  string
+	socketRegex *regexp.Regexp
 	weightRegex *regexp.Regexp
 	lastReload  time.Time
 	template    *template.Template
@@ -87,12 +87,14 @@ func (hap *HaProxyClient) Init() error {
 		hap.ReloadTimeoutInMilli = 1000
 	}
 
+	hap.socketRegex = regexp.MustCompile(`stats[\s]+socket[\s]+(\S+)`)
+	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
+
 	hap.socketPath = hap.findSocketPath()
 	if hap.socketPath == "" {
 		logs.WithF(hap.fields).Warn("No socketPath file specified. Will update by reload only")
 	}
 
-	hap.weightRegex = regexp.MustCompile(`weight ([0-9]+)`)
 	tmpl, err := template.New("ha-proxy-config").Parse(haProxyConfigurationTemplate)
 	if err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to parse haproxy config template")
@@ -104,9 +106,9 @@ func (hap *HaProxyClient) Init() error {
 
 func (hap *HaProxyClient) findSocketPath() string {
 	for _, str := range hap.Global {
-		if strings.HasPrefix(str, "stats socket ") {
-			start := len("stats socket ")
-			return strings.TrimSpace(str[start : start+strings.Index(str[start:], " ")])
+		res := hap.socketRegex.FindStringSubmatch(str)
+		if len(res) > 1 {
+			return res[1]
 		}
 	}
 	return ""
@@ -146,7 +148,7 @@ func (hap *HaProxyClient) SocketUpdate() error {
 
 	conn, err := net.Dial("unix", hap.socketPath)
 	if err != nil {
-		return errs.WithEF(err, hap.fields, "Failed to connect to haproxy socket")
+		return errs.WithEF(err, hap.fields.WithField("socket", hap.socketPath), "Failed to connect to haproxy socket")
 	}
 	defer conn.Close()
 
@@ -155,16 +157,16 @@ func (hap *HaProxyClient) SocketUpdate() error {
 	for name, servers := range hap.Backend {
 		for _, server := range servers {
 			res := hap.weightRegex.FindStringSubmatch(server)
-			serverInfo := strings.Split(server, " ")
-			if len(res) > 0 {
+			if len(res) == 3 {
 				i++
-				b.WriteString("set weight " + name + "/" + serverInfo[1] + " " + res[1] + "\n")
+				b.WriteString("set weight " + name + "/" + res[1] + " " + res[2] + "\n")
 			}
 		}
 
 	}
 
 	commands := b.Bytes()
+	logs.WithF(hap.fields.WithField("command", string(commands))).Debug("Running command on hap socket")
 	count, err := conn.Write(commands)
 	if count != len(commands) || err != nil {
 		return errs.WithEF(err, hap.fields.
