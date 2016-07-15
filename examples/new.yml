@@ -51,3 +51,19 @@ routers:
           hosts: ['localhost:2181']
           path: /monitoring/api/myapi
 
+      - watcher:
+          type: zookeeper
+          path: /monitoring/sql/sql1
+          hosts: ['localhost:2181']
+
+        serverOptions: check inter 2s rise 3 fall 2
+        routerOptions:
+          frontend:
+            - mode tcp
+            - timeout client 31s
+            - bind 127.0.0.1:5679
+          backend:
+            - mode tcp
+            - timeout server 2m
+            - timeout connect 45s
+            - option mysql-check user haproxy

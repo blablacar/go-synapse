@@ -15,7 +15,7 @@ type ServiceReport struct {
 
 func (s *ServiceReport) HasActiveServers() bool {
 	for _, report := range s.reports {
-		if report.Available {
+		if report.Available == nil || *report.Available {
 			return true
 		}
 	}
@@ -25,7 +25,7 @@ func (s *ServiceReport) HasActiveServers() bool {
 func (s *ServiceReport) AvailableUnavailable() (int, int) {
 	var available, unavailable int
 	for _, report := range s.reports {
-		if report.Available {
+		if report.Available == nil || *report.Available {
 			available++
 		} else {
 			unavailable++

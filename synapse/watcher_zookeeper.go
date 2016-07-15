@@ -68,6 +68,7 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 					go w.watchRoot(watcherStop, &watcherStopWaiter)
 				} else if e.State == zk.StateExpired || e.State == zk.StateDisconnected {
 					close(watcherStop)
+					logs.WithF(w.fields).Debug("Closed watchers Waiting for done")
 					watcherStopWaiter.Wait()
 
 					watcherStop = make(chan struct{})
