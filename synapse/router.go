@@ -55,6 +55,7 @@ func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup,
 	<-stop
 	close(watcherStop)
 	watcherStopWaiter.Wait()
+	logs.WithF(r.fields).Debug("All Watchers stopped")
 	close(events)
 }
 

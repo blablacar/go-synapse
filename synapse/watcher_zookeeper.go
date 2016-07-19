@@ -12,9 +12,9 @@ import (
 
 type WatcherZookeeper struct {
 	WatcherCommon
-	Hosts          []string
-	Path           string
-	TimeoutInMilli int
+	Hosts            []string
+	Path             string
+	TimeoutInMilli   int
 
 	reports          reportMap
 	connection       *nerve.SharedZkConnection
@@ -39,7 +39,7 @@ func (w *WatcherZookeeper) Init() error {
 	}
 	w.fields = w.fields.WithField("path", w.Path)
 
-	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli)*time.Millisecond)
+	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
 	if err != nil {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
@@ -48,42 +48,49 @@ func (w *WatcherZookeeper) Init() error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service) {
+func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <- ServiceReport, s *Service) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
+
 	watcherStop := make(chan struct{})
 	watcherStopWaiter := sync.WaitGroup{}
+	reportsStop := make(chan struct{})
 
-	for {
-		select {
-		case <-w.reports.changed:
-			reports := w.reports.getValues()
-			logs.WithF(w.fields.WithField("data", reports)).Debug("Sending report")
-			events <- ServiceReport{service: s, reports: reports}
-		case e := <-w.connectionEvents:
-			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
-			switch e.Type {
-			case zk.EventSession | zk.EventType(0):
-				if e.State == zk.StateHasSession {
-					go w.watchRoot(watcherStop, &watcherStopWaiter)
-				} else if e.State == zk.StateExpired || e.State == zk.StateDisconnected {
-					close(watcherStop)
-					logs.WithF(w.fields).Debug("Closed watchers Waiting for done")
-					watcherStopWaiter.Wait()
+	go func() {
+		for {
+			select {
+			case <-w.reports.changed:
+				reports := w.reports.getValues()
+				logs.WithF(w.fields.WithField("data", reports)).Debug("Sending report")
+				events <- ServiceReport{service: s, reports: reports}
+			case e := <-w.connectionEvents:
+				logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
+				switch e.Type {
+				case zk.EventSession | zk.EventType(0):
+					if e.State == zk.StateHasSession {
+						go w.watchRoot(watcherStop, &watcherStopWaiter)
+					} else if e.State == zk.StateExpired || e.State == zk.StateDisconnected {
+						close(watcherStop)
+						logs.WithF(w.fields).Debug("Closed watchers Waiting for done")
+						watcherStopWaiter.Wait()
 
-					watcherStop = make(chan struct{})
-					watcherStopWaiter = sync.WaitGroup{}
+						watcherStop = make(chan struct{})
+						watcherStopWaiter = sync.WaitGroup{}
+					}
 				}
+			case <-reportsStop:
+				return
 			}
-		case <-stop:
-			logs.WithF(w.fields).Debug("Stopping watcher")
-			close(watcherStop)
-			watcherStopWaiter.Wait()
-			w.connection.Close()
-			logs.WithF(w.fields).Debug("Watcher stopped")
-			return
 		}
-	}
+	}()
+
+	<-stop
+	logs.WithF(w.fields).Debug("Stopping watcher")
+	close(watcherStop)
+	watcherStopWaiter.Wait()
+	w.connection.Close()
+	close(reportsStop)
+	logs.WithF(w.fields).Debug("Watcher stopped")
 }
 
 func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.WaitGroup) {
@@ -112,7 +119,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 		} else {
 			for _, child := range childs {
 				if _, ok := w.reports.get(child); !ok {
-					go w.watchNode(w.Path+"/"+child, stop, doneWaiter)
+					go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
 				}
 			}
 		}
