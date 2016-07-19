@@ -12,9 +12,9 @@ import (
 
 type WatcherZookeeper struct {
 	WatcherCommon
-	Hosts            []string
-	Path             string
-	TimeoutInMilli   int
+	Hosts          []string
+	Path           string
+	TimeoutInMilli int
 
 	reports          reportMap
 	connection       *nerve.SharedZkConnection
@@ -39,7 +39,7 @@ func (w *WatcherZookeeper) Init() error {
 	}
 	w.fields = w.fields.WithField("path", w.Path)
 
-	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli) * time.Millisecond)
+	conn, err := nerve.NewSharedZkConnection(w.Hosts, time.Duration(w.TimeoutInMilli)*time.Millisecond)
 	if err != nil {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
@@ -48,7 +48,7 @@ func (w *WatcherZookeeper) Init() error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan <- ServiceReport, s *Service) {
+func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
 
@@ -119,7 +119,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 		} else {
 			for _, child := range childs {
 				if _, ok := w.reports.get(child); !ok {
-					go w.watchNode(w.Path + "/" + child, stop, doneWaiter)
+					go w.watchNode(w.Path+"/"+child, stop, doneWaiter)
 				}
 			}
 		}
