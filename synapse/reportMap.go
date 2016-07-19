@@ -17,7 +17,7 @@ type reportMap struct {
 func NewNodes() reportMap {
 	n := reportMap{}
 	n.m = make(map[string]nerve.Report)
-	n.changed = make(chan struct{})
+	n.changed = make(chan struct{}, 100) // zklib sux and will drop events if chan is full
 	return n
 }
 

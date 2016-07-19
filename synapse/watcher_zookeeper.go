@@ -152,7 +152,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
 			return
 		}
-		w.reports.addRawReport(node, content, fields)
+		go w.reports.addRawReport(node, content, fields)
 
 		select {
 		case e := <-childEvent:
