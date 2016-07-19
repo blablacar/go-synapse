@@ -76,9 +76,11 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 				}
 			}
 		case <-stop:
+			logs.WithF(w.fields).Debug("Stopping watcher")
 			close(watcherStop)
 			watcherStopWaiter.Wait()
 			w.connection.Close()
+			logs.WithF(w.fields).Debug("Watcher stopped")
 			return
 		}
 	}

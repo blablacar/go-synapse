@@ -68,7 +68,7 @@ func (s *Synapse) Init(version string, buildTime string) error {
 func (s *Synapse) Start(startStatus chan<- error) {
 	logs.Info("Starting synapse")
 	for _, routers := range s.typedRouters {
-		go routers.Start(s.routerStopper, &s.routerStopWait)
+		go routers.Run(s.routerStopper, &s.routerStopWait)
 	}
 	res := s.startApi()
 	if startStatus != nil {
@@ -78,8 +78,8 @@ func (s *Synapse) Start(startStatus chan<- error) {
 
 func (s *Synapse) Stop() {
 	logs.Info("Stopping synapse")
-	close(s.routerStopper)
 	s.stopApi()
+	close(s.routerStopper)
 	s.routerStopWait.Wait()
 	logs.Debug("All router stopped")
 }

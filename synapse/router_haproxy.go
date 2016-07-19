@@ -24,8 +24,8 @@ func NewRouterHaProxy() *RouterHaProxy {
 	return &RouterHaProxy{}
 }
 
-func (r *RouterHaProxy) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
-	r.StartCommon(stop, stopWaiter, r)
+func (r *RouterHaProxy) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
+	r.RunCommon(stop, stopWaiter, r)
 }
 
 func (r *RouterHaProxy) Init(s *Synapse) error {

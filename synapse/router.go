@@ -9,8 +9,8 @@ import (
 )
 
 type RouterCommon struct {
-	Type     string
-	Services []*Service
+	Type       string
+	Services   []*Service
 
 	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
@@ -20,7 +20,7 @@ type RouterCommon struct {
 type Router interface {
 	Init(s *Synapse) error
 	getFields() data.Fields
-	Start(stop chan struct{}, stopWaiter *sync.WaitGroup)
+	Run(stop chan struct{}, stopWaiter *sync.WaitGroup)
 	Update(serviceReport ServiceReport) error
 	ParseServerOptions(data []byte) (interface{}, error)
 	ParseRouterOptions(data []byte) (interface{}, error)
@@ -39,19 +39,32 @@ func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
 	return nil
 }
 
-func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGroup, router Router) {
+func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup, router Router) {
 	stopWaiter.Add(1)
 	defer stopWaiter.Done()
 
 	events := make(chan ServiceReport)
-
+	watcherStop := make(chan struct{})
+	watcherStopWaiter := sync.WaitGroup{}
 	for _, service := range r.Services {
-		go service.typedWatcher.Watch(stop, stopWaiter, events, service)
+		go service.typedWatcher.Watch(watcherStop, &watcherStopWaiter, events, service)
 	}
 
+	go r.eventsProcessor(events, router)
+
+	<-stop
+	close(watcherStop)
+	watcherStopWaiter.Wait()
+	close(events)
+}
+
+func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router) {
 	for {
 		select {
-		case event := <-events:
+		case event, ok := <-events:
+			if !ok {
+				return
+			}
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
 			available, unavailable := event.AvailableUnavailable()
 			r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
@@ -70,8 +83,6 @@ func (r *RouterCommon) StartCommon(stop chan struct{}, stopWaiter *sync.WaitGrou
 				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
 			r.lastEvents[event.service] = &event
-		case <-stop:
-			return
 		}
 	}
 }

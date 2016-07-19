@@ -21,8 +21,8 @@ func NewRouterConsole() *RouterConsole {
 	}
 }
 
-func (r *RouterConsole) Start(stop chan struct{}, stopWaiter *sync.WaitGroup) {
-	r.StartCommon(stop, stopWaiter, r)
+func (r *RouterConsole) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
+	r.RunCommon(stop, stopWaiter, r)
 }
 
 func (r *RouterConsole) Init(s *Synapse) error {
