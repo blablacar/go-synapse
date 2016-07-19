@@ -9,8 +9,8 @@ import (
 )
 
 type RouterCommon struct {
-	Type       string
-	Services   []*Service
+	Type     string
+	Services []*Service
 
 	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
