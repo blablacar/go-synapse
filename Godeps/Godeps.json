@@ -62,23 +62,23 @@
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog",
-			"Rev": "5d115df10702be00f951040b7d67a02f002f36b2"
+			"Rev": "968672186b194b0c054bb6e245c3788de8328bdf"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/data",
-			"Rev": "5d115df10702be00f951040b7d67a02f002f36b2"
+			"Rev": "968672186b194b0c054bb6e245c3788de8328bdf"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/errs",
-			"Rev": "5d115df10702be00f951040b7d67a02f002f36b2"
+			"Rev": "968672186b194b0c054bb6e245c3788de8328bdf"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/logs",
-			"Rev": "5d115df10702be00f951040b7d67a02f002f36b2"
+			"Rev": "968672186b194b0c054bb6e245c3788de8328bdf"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/register",
-			"Rev": "5d115df10702be00f951040b7d67a02f002f36b2"
+			"Rev": "968672186b194b0c054bb6e245c3788de8328bdf"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
@@ -121,6 +121,10 @@
 		{
 			"ImportPath": "github.com/streadway/amqp",
 			"Rev": "2e25825abdbd7752ff08b270d313b93519a0a232"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "5bcd134fee4dd1475da17714aac19c0aa0142e2f"
 		},
 		{
 			"ImportPath": "gopkg.in/ini.v1",
