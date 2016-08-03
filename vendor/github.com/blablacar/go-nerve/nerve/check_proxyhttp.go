@@ -3,6 +3,7 @@ package nerve
 import (
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-type CheckHttpProxy struct {
+type CheckProxyHttp struct {
 	CheckCommon
 	ProxyHost            string
 	ProxyPort            int
@@ -23,17 +24,24 @@ type CheckHttpProxy struct {
 	client http.Client
 }
 
-func (x *CheckHttpProxy) Run(statusChange chan Check, stop <-chan struct{}, doneWait *sync.WaitGroup) {
+func (x *CheckProxyHttp) Run(statusChange chan Check, stop <-chan struct{}, doneWait *sync.WaitGroup) {
 	x.CommonRun(x, statusChange, stop, doneWait)
 }
 
-func NewCheckProxyHttp() *CheckHttpProxy {
-	return &CheckHttpProxy{}
+func NewCheckProxyHttp() *CheckProxyHttp {
+	return &CheckProxyHttp{}
 }
 
-func (x *CheckHttpProxy) Init(s *Service) error {
+func (x *CheckProxyHttp) Init(s *Service) error {
 	if err := x.CheckCommon.CommonInit(s); err != nil {
 		return err
+	}
+
+	if x.ProxyHost == "" {
+		x.ProxyHost = s.Host
+	}
+	if x.ProxyPort == 0 {
+		x.ProxyPort = s.Port
 	}
 
 	proxyUrl, err := url.Parse("http://" + x.ProxyUsername + ":" + x.ProxyPassword + "@" + x.ProxyHost + ":" + strconv.Itoa(x.ProxyPort))
@@ -57,37 +65,42 @@ func (x *CheckHttpProxy) Init(s *Service) error {
 	return nil
 }
 
-func (x *CheckHttpProxy) Check() error {
+func (x *CheckProxyHttp) Check() error {
 	result := make(chan error)
 	for _, url := range x.Urls {
 		go func(url string) {
 			var res error
 			resp, err := x.client.Get(url)
+			if err != nil || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
+				ff := x.fields.WithField("url", url)
+				if err == nil {
+					ff = ff.WithField("status_code", resp.StatusCode)
+					if content, err := ioutil.ReadAll(resp.Body); err == nil {
+						ff = ff.WithField("content", content)
+					}
+					resp.Body.Close()
+				}
+				res = errs.WithEF(err, ff, "Url check failed")
+				logs.WithEF(err, x.fields).Trace("Url check failed")
+			}
 			if err == nil {
 				resp.Body.Close()
-			}
-			if err != nil || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
-				res = errs.WithEF(err, x.fields.WithField("url", url), "Url check failed")
-				logs.WithEF(err, x.fields).Trace("Url check failed")
 			}
 			result <- res
 		}(url)
 	}
 
-	failCount := 0
-	var oneErr error
+	errors := errs.WithF(x.fields, "Url(s) unreachable")
 	for i := 0; i < len(x.Urls); i++ {
 		res := <-result
 		if res != nil {
-			failCount++
-			oneErr = res
+			errors.WithErr(res)
 		}
 	}
 
-	if (x.FailOnAnyUnreachable && failCount > 0) ||
-		(!x.FailOnAnyUnreachable && failCount == len(x.Urls)) {
-		logs.WithEF(oneErr, x.fields.WithField("count", failCount)).Trace("Enough failed received")
-		return errs.WithEF(oneErr, x.fields, "All urls are unreachable")
+	if (x.FailOnAnyUnreachable && len(errors.Errs) > 0) || (!x.FailOnAnyUnreachable && len(errors.Errs) == len(x.Urls)) {
+		logs.WithEF(errors, x.fields).Trace("Enough failed received")
+		return errs.WithEF(errors, x.fields, "Enough failed received")
 	}
 	return nil
 }

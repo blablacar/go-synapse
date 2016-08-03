@@ -10,15 +10,15 @@ import (
 )
 
 type Nerve struct {
-	ApiHost            string
-	ApiPort            int
-	Services           []*Service
-	DisableWaitInMilli *int
+	ApiHost  string
+	ApiPort  int
+	Services []*Service
 
 	nerveVersion         string
 	nerveBuildTime       string
 	checkerFailureCount  *prometheus.CounterVec
 	reporterFailureCount *prometheus.CounterVec
+	execFailureCount     *prometheus.CounterVec
 	availableGauge       *prometheus.GaugeVec
 	apiListener          net.Listener
 	fields               data.Fields
@@ -32,16 +32,19 @@ func (n *Nerve) Init(version string, buildTime string) error {
 	if n.ApiPort == 0 {
 		n.ApiPort = 3454
 	}
-	if n.DisableWaitInMilli == nil {
-		val := 3000
-		n.DisableWaitInMilli = &val
-	}
 
 	n.checkerFailureCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "nerve",
 			Name:      "checker_failure_total",
 			Help:      "Counter of failed check",
+		}, []string{"name", "type"})
+
+	n.execFailureCount = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "nerve",
+			Name:      "exec_failure_total",
+			Help:      "Counter of failed exec",
 		}, []string{"name", "type"})
 
 	n.reporterFailureCount = prometheus.NewCounterVec(
@@ -58,6 +61,9 @@ func (n *Nerve) Init(version string, buildTime string) error {
 			Help:      "service available status",
 		}, []string{"name"})
 
+	if err := prometheus.Register(n.execFailureCount); err != nil {
+		return errs.WithEF(err, n.fields, "Failed to register prometheus exec_failure_total")
+	}
 	if err := prometheus.Register(n.checkerFailureCount); err != nil {
 		return errs.WithEF(err, n.fields, "Failed to register prometheus check_failure_total")
 	}

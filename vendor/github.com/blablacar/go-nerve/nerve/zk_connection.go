@@ -1,10 +1,12 @@
 package nerve
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/samuel/go-zookeeper/zk"
+	"io"
 	"sort"
 	"strings"
 	"sync"
@@ -139,4 +141,47 @@ func (z *SharedZkConnection) recipientListPublish() {
 			z.syncMutex.Unlock()
 		}
 	}
+}
+
+const protectedPrefix = "_c_"
+
+func (z *SharedZkConnection) CreateEphemeral(path string, data []byte, acl []zk.ACL) (string, error) {
+	var guid [16]byte
+	_, err := io.ReadFull(rand.Reader, guid[:16])
+	if err != nil {
+		return "", err
+	}
+	guidStr := fmt.Sprintf("%x", guid)
+
+	parts := strings.Split(path, "/")
+	parts[len(parts)-1] = fmt.Sprintf("%s%s%s", parts[len(parts)-1], protectedPrefix, guidStr)
+	rootPath := strings.Join(parts[:len(parts)-1], "/")
+	protectedPath := strings.Join(parts, "/")
+
+	var newPath string
+	for i := 0; i < 3; i++ {
+		newPath, err = z.Conn.Create(protectedPath, data, zk.FlagEphemeral|zk.FlagSequence, acl)
+		switch err {
+		case zk.ErrSessionExpired:
+		// No need to search for the node since it can't exist. Just try again.
+		case zk.ErrConnectionClosed:
+			children, _, err := z.Conn.Children(rootPath)
+			if err != nil {
+				return "", err
+			}
+			for _, p := range children {
+				parts := strings.Split(p, "/")
+				if pth := parts[len(parts)-1]; strings.HasPrefix(pth, protectedPrefix) {
+					if g := pth[len(protectedPrefix) : len(protectedPrefix)+32]; g == guidStr {
+						return rootPath + "/" + p, nil
+					}
+				}
+			}
+		case nil:
+			return newPath, nil
+		default:
+			return "", err
+		}
+	}
+	return "", err
 }

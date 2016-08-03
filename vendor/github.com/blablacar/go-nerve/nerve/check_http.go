@@ -2,6 +2,7 @@ package nerve
 
 import (
 	"github.com/n0rad/go-erlog/errs"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"sync"
@@ -45,11 +46,19 @@ func (x *CheckHttp) Init(s *Service) error {
 
 func (x *CheckHttp) Check() error {
 	resp, err := x.client.Get(x.url)
+	if err != nil || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
+		ff := x.fields
+		if err == nil {
+			ff = ff.WithField("status_code", resp.StatusCode)
+			if content, err := ioutil.ReadAll(resp.Body); err == nil {
+				ff = ff.WithField("content", content)
+			}
+			resp.Body.Close()
+		}
+		return errs.WithEF(err, ff, "Url check failed")
+	}
 	if err == nil {
 		resp.Body.Close()
-	}
-	if err != nil || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
-		return errs.WithEF(err, x.fields, "Url check failed")
 	}
 	return nil
 }
