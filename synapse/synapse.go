@@ -17,6 +17,7 @@ type Synapse struct {
 
 	serviceAvailableCount   *prometheus.GaugeVec
 	serviceUnavailableCount *prometheus.GaugeVec
+	routerUpdateFailures    *prometheus.GaugeVec
 
 	fields           data.Fields
 	synapseVersion   string
@@ -31,6 +32,13 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	s.synapseBuildTime = buildTime
 	s.synapseVersion = version
 	s.routerStopper = make(chan struct{})
+
+	s.routerUpdateFailures = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "synapse",
+			Name:      "router_update_failure",
+			Help:      "router update failures",
+		}, []string{"type"})
 
 	s.serviceAvailableCount = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -52,6 +60,10 @@ func (s *Synapse) Init(version string, buildTime string) error {
 
 	if err := prometheus.Register(s.serviceUnavailableCount); err != nil {
 		return errs.WithEF(err, s.fields, "Failed to register prometheus service_unavailable_count")
+	}
+
+	if err := prometheus.Register(s.routerUpdateFailures); err != nil {
+		return errs.WithEF(err, s.fields, "Failed to register prometheus router_update_failure")
 	}
 
 	for _, data := range s.Routers {

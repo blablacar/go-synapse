@@ -81,6 +81,7 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 				logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
 			}
 			if err := router.Update(event); err != nil {
+				r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
 				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 			}
 			r.lastEvents[event.service] = &event

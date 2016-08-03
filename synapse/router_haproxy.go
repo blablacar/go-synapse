@@ -85,6 +85,7 @@ func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
 		}
 	} else if err := r.SocketUpdate(); err != nil {
+		r.synapse.routerUpdateFailures.WithLabelValues(r.Type+"_socket").Inc()
 		logs.WithEF(err, r.RouterCommon.fields).Error("Update by Socket failed. Reloading instead")
 		if err := r.Reload(); err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
