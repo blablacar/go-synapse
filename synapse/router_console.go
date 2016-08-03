@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 	"sync"
-	"github.com/kubernetes/kubernetes/pkg/util/json"
+	"encoding/json"
 )
 
 type RouterConsole struct {
