@@ -1,12 +1,12 @@
 package synapse
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/n0rad/go-erlog/errs"
 	"io"
 	"os"
 	"sync"
+	"github.com/kubernetes/kubernetes/pkg/util/json"
 )
 
 type RouterConsole struct {
@@ -33,10 +33,13 @@ func (r *RouterConsole) Init(s *Synapse) error {
 }
 
 func (r *RouterConsole) Update(serviceReport ServiceReport) error {
+	r.ServerSort.Sort(&serviceReport.reports)
+
 	res, err := json.Marshal(serviceReport.reports)
 	if err != nil {
 		return errs.WithEF(err, r.fields, "Failed to prepare router update")
 	}
+
 	fmt.Fprintf(r.writer, "%s\n", res)
 	return nil
 }

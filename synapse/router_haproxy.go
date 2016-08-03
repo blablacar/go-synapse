@@ -3,7 +3,6 @@ package synapse
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"strconv"
@@ -15,8 +14,8 @@ type RouterHaProxy struct {
 	HaProxyClient
 }
 type HapRouterOptions struct {
-	Frontend []string
-	Backend  []string
+	Frontend   []string
+	Backend    []string
 }
 type HapServerOptions string
 
@@ -76,6 +75,8 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 }
 
 func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
+	r.ServerSort.Sort(&serviceReport.reports)
+
 	front, back := r.toFrontendAndBackend(serviceReport)
 	r.Frontend[serviceReport.service.Name] = front
 	r.Backend[serviceReport.service.Name] = back
@@ -85,7 +86,7 @@ func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
 		}
 	} else if err := r.SocketUpdate(); err != nil {
-		r.synapse.routerUpdateFailures.WithLabelValues(r.Type+"_socket").Inc()
+		r.synapse.routerUpdateFailures.WithLabelValues(r.Type + "_socket").Inc()
 		logs.WithEF(err, r.RouterCommon.fields).Error("Update by Socket failed. Reloading instead")
 		if err := r.Reload(); err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
@@ -101,7 +102,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend "+serviceReport.service.Name)
+	frontend = append(frontend, "default_backend " + serviceReport.service.Name)
 
 	backend := []string{}
 	if serviceReport.service.typedRouterOptions != nil {
@@ -122,7 +123,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 	return frontend, backend
 }
 
-func (r *RouterHaProxy) reportToHaProxyServer(report nerve.Report, serverOptions HapServerOptions) string {
+func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapServerOptions) string {
 	var buffer bytes.Buffer
 	buffer.WriteString("server ")
 	buffer.WriteString(report.Name)

@@ -11,6 +11,7 @@ import (
 type RouterCommon struct {
 	Type     string
 	Services []*Service
+	ServerSort ReportSortType
 
 	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
@@ -34,6 +35,10 @@ func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
 		if err := service.Init(router); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
 		}
+	}
+
+	if r.ServerSort == "" {
+		r.ServerSort = SORT_RANDOM
 	}
 
 	return nil

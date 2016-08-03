@@ -2,7 +2,6 @@ package synapse
 
 import (
 	"encoding/json"
-	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
@@ -10,7 +9,7 @@ import (
 
 type ServiceReport struct {
 	service *Service
-	reports []nerve.Report
+	reports []Report
 }
 
 func (s *ServiceReport) HasActiveServers() bool {
