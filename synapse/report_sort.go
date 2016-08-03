@@ -3,10 +3,10 @@ package synapse
 import (
 	"sort"
 	"github.com/n0rad/go-erlog/errs"
-	"github.com/kubernetes/kubernetes/pkg/util/rand"
 	"github.com/n0rad/go-erlog/data"
 	"strings"
 	"encoding/json"
+	"math/rand"
 )
 
 type ReportSortType string
