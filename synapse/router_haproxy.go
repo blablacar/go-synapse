@@ -66,7 +66,7 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 		}
 
 		if !found {
-			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing of options has changed")
+			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing or options has changed")
 			return false
 		}
 	}
@@ -75,8 +75,6 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 }
 
 func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
-	r.ServerSort.Sort(&serviceReport.reports)
-
 	front, back := r.toFrontendAndBackend(serviceReport)
 	r.Frontend[serviceReport.service.Name] = front
 	r.Backend[serviceReport.service.Name] = back

@@ -6,6 +6,7 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"sync"
+	"time"
 )
 
 type RouterCommon struct {
@@ -65,6 +66,10 @@ func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup,
 }
 
 func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router) {
+	firstUpdateDone := false
+	var timer *time.Timer
+	var currentEvent ServiceReport
+	firstUpdateMutex := sync.Mutex{}
 	for {
 		select {
 		case event, ok := <-events:
@@ -72,26 +77,46 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 				return
 			}
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
-			available, unavailable := event.AvailableUnavailable()
-			r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
-			r.synapse.serviceUnavailableCount.WithLabelValues(event.service.Name).Set(float64(unavailable))
-			if !event.HasActiveServers() {
-				if r.lastEvents[event.service] == nil {
-					logs.WithF(event.service.fields).Warn("First Report has no active server. Not declaring in router")
-				} else {
-					logs.WithF(event.service.fields).Error("Receiving report with no active server. Keeping previous report")
+			firstUpdateMutex.Lock()
+			if !firstUpdateDone {
+				currentEvent = event
+				if timer == nil {
+					timer = time.AfterFunc(time.Second, func() {
+						firstUpdateMutex.Lock()
+						defer firstUpdateMutex.Unlock()
+						r.handleReport(currentEvent, router)
+						firstUpdateDone = true
+					})
 				}
-				continue
-			} else if r.lastEvents[event.service] == nil || r.lastEvents[event.service].HasActiveServers() != event.HasActiveServers() {
-				logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
+			} else {
+				r.handleReport(event, router)
 			}
-			if err := router.Update(event); err != nil {
-				r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
-				logs.WithEF(err, r.fields).Error("Failed to report watch modification")
-			}
-			r.lastEvents[event.service] = &event
+			firstUpdateMutex.Unlock()
 		}
 	}
+}
+
+func (r *RouterCommon) handleReport(event ServiceReport, router Router) {
+	r.ServerSort.Sort(&event.reports)
+
+	available, unavailable := event.AvailableUnavailable()
+	r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
+	r.synapse.serviceUnavailableCount.WithLabelValues(event.service.Name).Set(float64(unavailable))
+	if !event.HasActiveServers() {
+		if r.lastEvents[event.service] == nil {
+			logs.WithF(event.service.fields).Warn("First Report has no active server. Not declaring in router")
+		} else {
+			logs.WithF(event.service.fields).Error("Receiving report with no active server. Keeping previous report")
+		}
+		return
+	} else if r.lastEvents[event.service] == nil || r.lastEvents[event.service].HasActiveServers() != event.HasActiveServers() {
+		logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
+	}
+	if err := router.Update(event); err != nil {
+		r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
+		logs.WithEF(err, r.fields).Error("Failed to report watch modification")
+	}
+	r.lastEvents[event.service] = &event
 }
 
 func (r *RouterCommon) getFields() data.Fields {

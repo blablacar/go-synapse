@@ -33,8 +33,6 @@ func (r *RouterConsole) Init(s *Synapse) error {
 }
 
 func (r *RouterConsole) Update(serviceReport ServiceReport) error {
-	r.ServerSort.Sort(&serviceReport.reports)
-
 	res, err := json.Marshal(serviceReport.reports)
 	if err != nil {
 		return errs.WithEF(err, r.fields, "Failed to prepare router update")

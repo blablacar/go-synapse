@@ -6,7 +6,7 @@ import (
 	"github.com/kubernetes/kubernetes/pkg/util/rand"
 	"github.com/n0rad/go-erlog/data"
 	"strings"
-	"github.com/mitchellh/packer/common/json"
+	"encoding/json"
 )
 
 type ReportSortType string
