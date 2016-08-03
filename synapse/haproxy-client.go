@@ -166,7 +166,7 @@ func (hap *HaProxyClient) SocketUpdate() error {
 	}
 
 	commands := b.Bytes()
-	logs.WithF(hap.fields.WithField("command", string(commands))).Debug("Running command on hap socket")
+	logs.WithF(hap.fields.WithField("command", string(commands))).Trace("Running command on hap socket")
 	count, err := conn.Write(commands)
 	if count != len(commands) || err != nil {
 		return errs.WithEF(err, hap.fields.
