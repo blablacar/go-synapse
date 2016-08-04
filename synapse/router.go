@@ -12,7 +12,6 @@ import (
 type RouterCommon struct {
 	Type     string
 	Services []*Service
-	ServerSort ReportSortType
 
 	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
@@ -36,10 +35,6 @@ func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
 		if err := service.Init(router); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
 		}
-	}
-
-	if r.ServerSort == "" {
-		r.ServerSort = SORT_RANDOM
 	}
 
 	return nil
@@ -97,7 +92,7 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 }
 
 func (r *RouterCommon) handleReport(event ServiceReport, router Router) {
-	r.ServerSort.Sort(&event.reports)
+	event.service.ServerSort.Sort(&event.reports)
 
 	available, unavailable := event.AvailableUnavailable()
 	r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))

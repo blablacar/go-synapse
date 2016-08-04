@@ -38,6 +38,7 @@ type Service struct {
 	Watcher       json.RawMessage
 	RouterOptions json.RawMessage
 	ServerOptions json.RawMessage
+	ServerSort    ReportSortType
 
 	fields             data.Fields
 	typedWatcher       Watcher
@@ -76,6 +77,10 @@ func (s *Service) Init(router Router) error {
 			return errs.WithEF(err, s.fields, "Failed to parse serverOptions")
 		}
 		s.typedServerOptions = typedServerOptions
+	}
+
+	if s.ServerSort == "" {
+		s.ServerSort = SORT_RANDOM
 	}
 
 	logs.WithF(s.fields.WithField("data", s)).Info("Service loaded")
