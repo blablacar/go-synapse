@@ -67,7 +67,7 @@ func sigQuitThreadDump() {
 	sigChan := make(chan os.Signal)
 	go func() {
 		for range sigChan {
-			stacktrace := make([]byte, 10<<10)
+			stacktrace := make([]byte, 2<<20)
 			length := runtime.Stack(stacktrace, true)
 			fmt.Println(string(stacktrace[:length]))
 

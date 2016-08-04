@@ -49,7 +49,6 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 	previous := r.lastEvents[report.service]
 
 	if previous == nil || len(previous.reports) != len(report.reports) {
-		logs.WithF(r.RouterCommon.fields).Debug("Number of Server has changed. Reload needed")
 		return false
 	}
 
@@ -74,12 +73,18 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 	return true
 }
 
-func (r *RouterHaProxy) Update(serviceReport ServiceReport) error {
-	front, back := r.toFrontendAndBackend(serviceReport)
-	r.Frontend[serviceReport.service.Name] = front
-	r.Backend[serviceReport.service.Name] = back
+func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
+	reloadNeeded := r.socketPath == ""
+	for _, report := range serviceReports {
+		front, back := r.toFrontendAndBackend(report)
+		r.Frontend[report.service.Name] = front
+		r.Backend[report.service.Name] = back
+		if !r.isSameServers(report) {
+			reloadNeeded = true
+		}
+	}
 
-	if !r.isSameServers(serviceReport) || r.socketPath == "" {
+	if reloadNeeded {
 		if err := r.Reload(); err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
 		}

@@ -66,17 +66,6 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	logs.WithF(w.fields).Debug("Watcher stopped")
 }
 
-func (w *WatcherZookeeper) changedToReport(reportsStop <-chan struct{}, events chan<- ServiceReport, s *Service) {
-	for {
-		select {
-		case <-w.reports.changed:
-			reports := w.reports.getValues()
-			events <- ServiceReport{service: s, reports: reports}
-		case <-reportsStop:
-			return
-		}
-	}
-}
 
 func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.WaitGroup) {
 	doneWaiter.Add(1)
@@ -103,7 +92,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			w.reports.setNoNodes()
 		} else {
 			for _, child := range childs {
-				if _, ok := w.reports.get(child); !ok {
+				if _, ok := w.reports.get(w.Path+"/"+child); !ok {
 					go w.watchNode(w.Path+"/"+child, stop, doneWaiter)
 				}
 			}
@@ -138,6 +127,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
 			return
 		}
+
 		w.reports.addRawReport(node, content, fields, stats.Ctime)
 
 		select {

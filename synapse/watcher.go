@@ -53,3 +53,15 @@ func WatcherFromJson(content []byte) (Watcher, error) {
 	}
 	return typedWatcher, nil
 }
+
+func (w *WatcherZookeeper) changedToReport(reportsStop <-chan struct{}, events chan<- ServiceReport, s *Service) {
+	for {
+		select {
+		case <-w.reports.changed:
+			reports := w.reports.getValues()
+			events <- ServiceReport{service: s, reports: reports}
+		case <-reportsStop:
+			return
+		}
+	}
+}

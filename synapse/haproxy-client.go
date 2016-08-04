@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"text/template"
 	"time"
+	"sync"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
@@ -58,6 +59,8 @@ type HaProxyClient struct {
 	ReloadTimeoutInMilli     int
 	StatePath                string
 
+
+	reloadMutex sync.Mutex
 	socketPath  string
 	socketRegex *regexp.Regexp
 	weightRegex *regexp.Regexp
@@ -115,6 +118,9 @@ func (hap *HaProxyClient) findSocketPath() string {
 }
 
 func (hap *HaProxyClient) Reload() error {
+	hap.reloadMutex.Lock()
+	defer hap.reloadMutex.Unlock()
+
 	if err := hap.writeConfig(); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to write haproxy configuration")
 	}

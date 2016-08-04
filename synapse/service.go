@@ -5,11 +5,16 @@ import (
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
+	"fmt"
 )
 
 type ServiceReport struct {
 	service *Service
 	reports []Report
+}
+
+func (s *ServiceReport) String() string {
+	return s.service.Name + " " + fmt.Sprint(s.reports)
 }
 
 func (s *ServiceReport) HasActiveServers() bool {
@@ -34,11 +39,11 @@ func (s *ServiceReport) AvailableUnavailable() (int, int) {
 }
 
 type Service struct {
-	Name          string
-	Watcher       json.RawMessage
-	RouterOptions json.RawMessage
-	ServerOptions json.RawMessage
-	ServerSort    ReportSortType
+	Name               string
+	Watcher            json.RawMessage
+	RouterOptions      json.RawMessage
+	ServerOptions      json.RawMessage
+	ServerSort         ReportSortType
 
 	fields             data.Fields
 	typedWatcher       Watcher
@@ -86,3 +91,4 @@ func (s *Service) Init(router Router) error {
 	logs.WithF(s.fields.WithField("data", s)).Info("Service loaded")
 	return nil
 }
+

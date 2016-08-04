@@ -32,13 +32,14 @@ func (r *RouterConsole) Init(s *Synapse) error {
 	return nil
 }
 
-func (r *RouterConsole) Update(serviceReport ServiceReport) error {
-	res, err := json.Marshal(serviceReport.reports)
-	if err != nil {
-		return errs.WithEF(err, r.fields, "Failed to prepare router update")
+func (r *RouterConsole) Update(reports []ServiceReport) error {
+	for _, report := range reports {
+		res, err := json.Marshal(report.reports)
+		if err != nil {
+			return errs.WithEF(err, r.fields, "Failed to prepare router update")
+		}
+		fmt.Fprintf(r.writer, "%s\n", res)
 	}
-
-	fmt.Fprintf(r.writer, "%s\n", res)
 	return nil
 }
 
