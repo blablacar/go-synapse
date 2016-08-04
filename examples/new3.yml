@@ -1,8 +1,5 @@
 
 
-apiHost: localhost
-apiPort: 8888
-
 routers:
   - type: console
 #    reloadCommand: [/reload.sh]

@@ -33,6 +33,11 @@ func (s *Synapse) Init(version string, buildTime string) error {
 	s.synapseVersion = version
 	s.routerStopper = make(chan struct{})
 
+
+	if s.ApiPort == 0 {
+		s.ApiPort = 3455
+	}
+
 	s.routerUpdateFailures = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "synapse",
