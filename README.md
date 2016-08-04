@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/blablacar/go-synapse.png?branch=master)](https://travis-ci.org/blablacar/go-synapse)
+
 ___/!\ This Software is in Alpha Stage! Don't use it in production, until it's considered Stable /!\___
 
 # GO-Synapse #
