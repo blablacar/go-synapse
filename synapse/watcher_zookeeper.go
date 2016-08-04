@@ -18,7 +18,6 @@ type WatcherZookeeper struct {
 
 	reports          reportMap
 	connection       *nerve.SharedZkConnection
-	connectionEvents <-chan zk.Event
 }
 
 func NewWatcherZookeeper() *WatcherZookeeper {
@@ -44,7 +43,6 @@ func (w *WatcherZookeeper) Init() error {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
 	w.connection = conn
-	w.connectionEvents = w.connection.Subscribe()
 	return nil
 }
 
@@ -54,35 +52,10 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 
 	watcherStop := make(chan struct{})
 	watcherStopWaiter := sync.WaitGroup{}
+	go w.watchRoot(watcherStop, &watcherStopWaiter)
+
 	reportsStop := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-w.reports.changed:
-				reports := w.reports.getValues()
-				logs.WithF(w.fields.WithField("data", reports)).Debug("Sending report")
-				events <- ServiceReport{service: s, reports: reports}
-			case e := <-w.connectionEvents:
-				logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
-				switch e.Type {
-				case zk.EventSession | zk.EventType(0):
-					if e.State == zk.StateHasSession {
-						go w.watchRoot(watcherStop, &watcherStopWaiter)
-					} else if e.State == zk.StateExpired || e.State == zk.StateDisconnected {
-						close(watcherStop)
-						logs.WithF(w.fields).Debug("Closed watchers Waiting for done")
-						watcherStopWaiter.Wait()
-
-						watcherStop = make(chan struct{})
-						watcherStopWaiter = sync.WaitGroup{}
-					}
-				}
-			case <-reportsStop:
-				return
-			}
-		}
-	}()
+	go w.changedToReport(reportsStop, events, s)
 
 	<-stop
 	logs.WithF(w.fields).Debug("Stopping watcher")
@@ -91,6 +64,18 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	w.connection.Close()
 	close(reportsStop)
 	logs.WithF(w.fields).Debug("Watcher stopped")
+}
+
+func (w *WatcherZookeeper) changedToReport(reportsStop <-chan struct{}, events chan<- ServiceReport, s *Service) {
+	for {
+		select {
+		case <-w.reports.changed:
+			reports := w.reports.getValues()
+			events <- ServiceReport{service: s, reports: reports}
+		case <-reportsStop:
+			return
+		}
+	}
 }
 
 func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.WaitGroup) {
@@ -131,6 +116,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			case zk.EventNodeChildrenChanged | zk.EventNodeCreated | zk.EventNodeDataChanged | zk.EventNotWatching:
 			// loop
 			case zk.EventNodeDeleted:
+				logs.WithF(w.fields.WithField("node", w.Path)).Debug("Rootnode deleted")
 				w.reports.removeAll()
 			}
 		case <-stop:
@@ -152,7 +138,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
 			return
 		}
-		go w.reports.addRawReport(node, content, fields, stats.Ctime)
+		w.reports.addRawReport(node, content, fields, stats.Ctime)
 
 		select {
 		case e := <-childEvent:
@@ -161,6 +147,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			case zk.EventNodeDataChanged | zk.EventNodeCreated | zk.EventNotWatching:
 			// loop
 			case zk.EventNodeDeleted:
+				logs.WithF(w.fields.WithField("node", node)).Debug("Node deleted")
 				w.reports.removeNode(node)
 				return
 			}

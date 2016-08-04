@@ -22,14 +22,14 @@ type Report struct {
 func NewNodes() reportMap {
 	n := reportMap{}
 	n.m = make(map[string]Report)
-	n.changed = make(chan struct{}, 100) // zklib sux and will drop events if chan is full
+	n.changed = make(chan struct{})
 	return n
 }
 
 func (n *reportMap) setNoNodes() {
 	n.Lock()
-	defer n.Unlock()
 	n.m = make(map[string]Report)
+	n.Unlock()
 	n.changed <- struct{}{}
 }
 
@@ -38,27 +38,25 @@ func (n *reportMap) addRawReport(name string, content []byte, failFields data.Fi
 	if err := json.Unmarshal(content, &r); err != nil {
 		logs.WithEF(err, failFields).Warn("Failed to unmarshal report")
 	}
-
 	n.Lock()
-	defer n.Unlock()
 	n.m[name] = Report{r, creationTime}
+	n.Unlock()
 	n.changed <- struct{}{}
 }
 
 func (n *reportMap) removeAll() {
 	n.Lock()
-	defer n.Unlock()
 	for k := range n.m {
 		delete(n.m, k)
 	}
+	n.Unlock()
 	n.changed <- struct{}{}
-
 }
 
 func (n *reportMap) removeNode(name string) {
 	n.Lock()
-	defer n.Unlock()
 	delete(n.m, name)
+	n.Unlock()
 	n.changed <- struct{}{}
 }
 
