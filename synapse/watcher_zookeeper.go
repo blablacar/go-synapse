@@ -16,8 +16,8 @@ type WatcherZookeeper struct {
 	Path           string
 	TimeoutInMilli int
 
-	reports          reportMap
-	connection       *nerve.SharedZkConnection
+	reports    reportMap
+	connection *nerve.SharedZkConnection
 }
 
 func NewWatcherZookeeper() *WatcherZookeeper {
@@ -66,7 +66,6 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	logs.WithF(w.fields).Debug("Watcher stopped")
 }
 
-
 func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.WaitGroup) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
@@ -92,7 +91,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			w.reports.setNoNodes()
 		} else {
 			for _, child := range childs {
-				if _, ok := w.reports.get(w.Path+"/"+child); !ok {
+				if _, ok := w.reports.get(w.Path + "/" + child); !ok {
 					go w.watchNode(w.Path+"/"+child, stop, doneWaiter)
 				}
 			}

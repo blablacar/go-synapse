@@ -14,8 +14,8 @@ type RouterHaProxy struct {
 	HaProxyClient
 }
 type HapRouterOptions struct {
-	Frontend   []string
-	Backend    []string
+	Frontend []string
+	Backend  []string
 }
 type HapServerOptions string
 
@@ -105,7 +105,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend " + serviceReport.service.Name)
+	frontend = append(frontend, "default_backend "+serviceReport.service.Name)
 
 	backend := []string{}
 	if serviceReport.service.typedRouterOptions != nil {

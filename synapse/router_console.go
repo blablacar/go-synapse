@@ -1,12 +1,12 @@
 package synapse
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/n0rad/go-erlog/errs"
 	"io"
 	"os"
 	"sync"
-	"encoding/json"
 )
 
 type RouterConsole struct {

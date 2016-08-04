@@ -11,9 +11,9 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"sync"
 	"text/template"
 	"time"
-	"sync"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
@@ -58,7 +58,6 @@ type HaProxyClient struct {
 	ReloadMinIntervalInMilli int
 	ReloadTimeoutInMilli     int
 	StatePath                string
-
 
 	reloadMutex sync.Mutex
 	socketPath  string

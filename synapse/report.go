@@ -76,4 +76,3 @@ func (n *reportMap) getValues() []Report {
 	}
 	return r
 }
-

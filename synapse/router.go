@@ -10,8 +10,8 @@ import (
 )
 
 type RouterCommon struct {
-	Type       string
-	Services   []*Service
+	Type     string
+	Services []*Service
 
 	synapse    *Synapse
 	lastEvents map[*Service]*ServiceReport
@@ -62,7 +62,7 @@ func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup,
 
 func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router) {
 	var firstUpdateDone bool
-	var firstEventTimer  *time.Timer
+	var firstEventTimer *time.Timer
 	var firstUpdateMutex sync.Mutex
 	firstEvents := make(map[*Service]*ServiceReport)
 

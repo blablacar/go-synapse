@@ -1,12 +1,12 @@
 package synapse
 
 import (
-	"sort"
-	"github.com/n0rad/go-erlog/errs"
-	"github.com/n0rad/go-erlog/data"
-	"strings"
 	"encoding/json"
+	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
 	"math/rand"
+	"sort"
+	"strings"
 )
 
 type ReportSortType string

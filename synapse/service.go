@@ -2,10 +2,10 @@ package synapse
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
-	"fmt"
 )
 
 type ServiceReport struct {
@@ -39,11 +39,11 @@ func (s *ServiceReport) AvailableUnavailable() (int, int) {
 }
 
 type Service struct {
-	Name               string
-	Watcher            json.RawMessage
-	RouterOptions      json.RawMessage
-	ServerOptions      json.RawMessage
-	ServerSort         ReportSortType
+	Name          string
+	Watcher       json.RawMessage
+	RouterOptions json.RawMessage
+	ServerOptions json.RawMessage
+	ServerSort    ReportSortType
 
 	fields             data.Fields
 	typedWatcher       Watcher
@@ -91,4 +91,3 @@ func (s *Service) Init(router Router) error {
 	logs.WithF(s.fields.WithField("data", s)).Info("Service loaded")
 	return nil
 }
-
