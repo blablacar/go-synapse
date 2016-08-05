@@ -123,7 +123,8 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 	for {
 		content, stats, childEvent, err := w.connection.Conn.GetW(node)
 		if err != nil {
-			logs.WithEF(err, w.fields).Warn("Failed to watch node. Probably died just after arrival.")
+			logs.WithEF(err, fields).Warn("Failed to watch node. Probably died just after arrival.")
+			w.reports.removeNode(node)
 			return
 		}
 
