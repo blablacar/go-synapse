@@ -102,6 +102,7 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 
 func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 	validEvents := []ServiceReport{}
+
 	for _, event := range events {
 		event.service.ServerSort.Sort(&event.reports)
 
@@ -120,6 +121,11 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 			logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
 		}
 		validEvents = append(validEvents, event)
+	}
+
+	if len(validEvents) == 0 {
+		logs.WithF(r.fields).Debug("Nothing to update on router")
+		return
 	}
 
 	if err := router.Update(validEvents); err != nil {
