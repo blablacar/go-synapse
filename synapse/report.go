@@ -10,6 +10,7 @@ import (
 
 type reportMap struct {
 	sync.RWMutex
+	service *Service
 	m       map[string]Report
 	changed chan struct{}
 }
@@ -19,11 +20,13 @@ type Report struct {
 	CreationTime int64
 }
 
-func NewNodes() reportMap {
-	n := reportMap{}
+func NewReportMap(service *Service) *reportMap {
+	n := reportMap{
+		service: service,
+	}
 	n.m = make(map[string]Report)
 	n.changed = make(chan struct{})
-	return n
+	return &n
 }
 
 func (n *reportMap) setNoNodes() {
@@ -36,7 +39,9 @@ func (n *reportMap) setNoNodes() {
 func (n *reportMap) addRawReport(name string, content []byte, failFields data.Fields, creationTime int64) {
 	r := nerve.Report{}
 	if err := json.Unmarshal(content, &r); err != nil {
-		logs.WithEF(err, failFields).Warn("Failed to unmarshal report")
+		n.service.synapse.watcherFailures.WithLabelValues(n.service.Name, "content").Inc()
+		logs.WithEF(err, failFields.WithField("content", string(content))).Warn("Failed to unmarshal report")
+		return
 	}
 	n.Lock()
 	n.m[name] = Report{r, creationTime}

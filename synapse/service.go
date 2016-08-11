@@ -45,15 +45,17 @@ type Service struct {
 	ServerOptions json.RawMessage
 	ServerSort    ReportSortType
 
+	synapse            *Synapse
 	fields             data.Fields
 	typedWatcher       Watcher
 	typedRouterOptions interface{}
 	typedServerOptions interface{}
 }
 
-func (s *Service) Init(router Router) error {
+func (s *Service) Init(router Router, synapse *Synapse) error {
+	s.synapse = synapse
 	s.fields = router.getFields().WithField("service", s.Name)
-	watcher, err := WatcherFromJson(s.Watcher)
+	watcher, err := WatcherFromJson(s.Watcher, s)
 	if err != nil {
 		return errs.WithEF(err, s.fields, "Failed to read watcher")
 	}

@@ -29,7 +29,7 @@ func (w *WatcherCommon) GetFields() data.Fields {
 	return w.fields
 }
 
-func WatcherFromJson(content []byte) (Watcher, error) {
+func WatcherFromJson(content []byte, service *Service) (Watcher, error) {
 	t := &WatcherCommon{}
 	if err := json.Unmarshal([]byte(content), t); err != nil {
 		return nil, errs.WithE(err, "Failed to unmarshall watcher type")
@@ -39,7 +39,7 @@ func WatcherFromJson(content []byte) (Watcher, error) {
 	var typedWatcher Watcher
 	switch t.Type {
 	case "zookeeper":
-		typedWatcher = NewWatcherZookeeper()
+		typedWatcher = NewWatcherZookeeper(service)
 	default:
 		return nil, errs.WithF(fields, "Unsupported watcher type")
 	}

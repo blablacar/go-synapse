@@ -27,12 +27,12 @@ type Router interface {
 	ParseRouterOptions(data []byte) (interface{}, error)
 }
 
-func (r *RouterCommon) commonInit(router Router, s *Synapse) error {
+func (r *RouterCommon) commonInit(router Router, synapse *Synapse) error {
 	r.fields = data.WithField("type", r.Type)
-	r.synapse = s
+	r.synapse = synapse
 	r.lastEvents = make(map[*Service]*ServiceReport)
 	for _, service := range r.Services {
-		if err := service.Init(router); err != nil {
+		if err := service.Init(router, synapse); err != nil {
 			return errs.WithEF(err, r.fields, "Failed to init service")
 		}
 	}

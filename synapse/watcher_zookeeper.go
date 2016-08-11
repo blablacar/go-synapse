@@ -16,14 +16,14 @@ type WatcherZookeeper struct {
 	Path           string
 	TimeoutInMilli int
 
-	reports    reportMap
+	reports    *reportMap
 	connection *nerve.SharedZkConnection
 }
 
-func NewWatcherZookeeper() *WatcherZookeeper {
+func NewWatcherZookeeper(service *Service) *WatcherZookeeper {
 	w := &WatcherZookeeper{
 		TimeoutInMilli: 2000,
-		reports:        NewNodes(),
+		reports:        NewReportMap(service),
 	}
 	return w
 }
