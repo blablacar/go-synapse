@@ -50,7 +50,7 @@ func (x *CheckProxyHttp) Init(s *Service) error {
 	}
 
 	for i, url := range x.Urls {
-		if !strings.HasPrefix(url, "http://") {
+		if !(strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://")) {
 			x.Urls[i] = "http://" + url
 		}
 	}
@@ -76,7 +76,7 @@ func (x *CheckProxyHttp) Check() error {
 				if err == nil {
 					ff = ff.WithField("status_code", resp.StatusCode)
 					if content, err := ioutil.ReadAll(resp.Body); err == nil {
-						ff = ff.WithField("content", content)
+						ff = ff.WithField("content", string(content))
 					}
 					resp.Body.Close()
 				}

@@ -118,6 +118,9 @@ func (e *EntryError) Error() string {
 	if e.Errs != nil {
 		buffer.WriteString("Caused by : ")
 		for i, err := range e.Errs {
+			if err == nil {
+				continue
+			}
 			if i > 0 {
 				buffer.WriteString("And\n")
 			}

@@ -16,8 +16,9 @@ type WatcherZookeeper struct {
 	Path           string
 	TimeoutInMilli int
 
-	reports    *reportMap
-	connection *nerve.SharedZkConnection
+	reports          *reportMap
+	connection       *nerve.SharedZkConnection
+	connectionEvents <-chan zk.Event
 }
 
 func NewWatcherZookeeper(service *Service) *WatcherZookeeper {
@@ -43,6 +44,7 @@ func (w *WatcherZookeeper) Init() error {
 		return errs.WithEF(err, w.fields, "Failed to prepare connection to zookeeper")
 	}
 	w.connection = conn
+	w.connectionEvents = w.connection.Subscribe()
 	return nil
 }
 
@@ -50,12 +52,27 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
 
-	watcherStop := make(chan struct{})
-	watcherStopWaiter := sync.WaitGroup{}
-	go w.watchRoot(watcherStop, &watcherStopWaiter)
-
 	reportsStop := make(chan struct{})
 	go w.changedToReport(reportsStop, events, s)
+
+	watcherStop := make(chan struct{})
+	watcherStopWaiter := sync.WaitGroup{}
+	//go w.watchRoot(watcherStop, &watcherStopWaiter)
+
+main:
+	for {
+		select {
+		case e := <-w.connectionEvents:
+			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
+			switch e.Type {
+			case zk.EventSession | zk.EventType(0):
+				if e.State == zk.StateHasSession {
+					go w.watchRoot(watcherStop, &watcherStopWaiter)
+					break main
+				}
+			}
+		}
+	}
 
 	<-stop
 	logs.WithF(w.fields).Debug("Stopping watcher")
@@ -73,13 +90,14 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	for {
 		exist, _, existEvent, err := w.connection.Conn.ExistsW(w.Path)
 		if !exist {
-			logs.WithF(w.fields).Warn("Path does not exists, waiting for creation")
+			logs.WithEF(err, w.fields).Warn("Path does not exists, waiting for creation")
 			w.reports.setNoNodes()
 			select {
 			case <-existEvent:
 			case <-stop:
 				return
 			}
+			logs.WithF(w.fields).Debug("Node exists now")
 		}
 
 		childs, _, rootEvents, err := w.connection.Conn.ChildrenW(w.Path)
