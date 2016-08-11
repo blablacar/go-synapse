@@ -133,7 +133,7 @@ func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapSe
 	buffer.WriteString(" ")
 	buffer.WriteString(report.Host)
 	buffer.WriteString(":")
-	buffer.WriteString(strconv.Itoa(report.Port))
+	buffer.WriteString(strconv.Itoa(int(report.Port)))
 	buffer.WriteString(" ")
 	if report.Weight != nil {
 		buffer.WriteString("weight ")
