@@ -56,7 +56,8 @@ func (s *Synapse) startApi() error {
 
 	m.Get("/metrics", prometheus.Handler())
 	m.Get("/", func() string {
-		return `/metrics`
+		return `/metrics
+/version`
 	})
 
 	logs.WithF(s.fields.WithField("url", url)).Info("Starting api")
