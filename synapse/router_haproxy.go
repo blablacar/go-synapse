@@ -45,7 +45,7 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 	return nil
 }
 
-func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
+func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 	previous := r.lastEvents[report.service]
 
 	if previous == nil || len(previous.reports) != len(report.reports) {
@@ -53,18 +53,18 @@ func (r *RouterHaProxy) isSameServers(report ServiceReport) bool {
 	}
 
 	for _, new := range report.reports {
-		found := false
+		weightOnly := false
 		for _, old := range previous.reports {
 			if new.Host == old.Host &&
 				new.Port == old.Port &&
 				new.Name == old.Name &&
 				new.HaProxyServerOptions == old.HaProxyServerOptions {
-				found = true
+				weightOnly = true
 				break
 			}
 		}
 
-		if !found {
+		if !weightOnly {
 			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing or options has changed")
 			return false
 		}
@@ -79,7 +79,7 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 		front, back := r.toFrontendAndBackend(report)
 		r.Frontend[report.service.Name] = front
 		r.Backend[report.service.Name] = back
-		if !r.isSameServers(report) {
+		if !r.isSocketUpdatable(report) {
 			reloadNeeded = true
 		}
 	}

@@ -167,10 +167,15 @@ func (hap *HaProxyClient) SocketUpdate() error {
 				b.WriteString("set weight " + name + "/" + res[1] + " " + res[2] + "\n")
 			}
 		}
+	}
 
+	if b.Len() == 0 {
+		logs.WithF(hap.fields).Debug("Nothing to update by socket. No weight set")
+		return nil
 	}
 
 	commands := b.Bytes()
+
 	logs.WithF(hap.fields.WithField("command", string(commands))).Trace("Running command on hap socket")
 	count, err := conn.Write(commands)
 	if count != len(commands) || err != nil {

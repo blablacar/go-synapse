@@ -41,10 +41,25 @@ type Report struct {
 	Labels               map[string]string `json:"labels,omitempty"`
 }
 
+type report Report
+
 func NewReport(content []byte) (*Report, error) {
 	var r Report
 	err := json.Unmarshal(content, &r)
 	return &r, err
+}
+
+func (r *Report) UnmarshalJSON(b []byte) error {
+	var rr report
+	if err := json.Unmarshal(b, &rr); err != nil {
+		return err
+	}
+	if rr.Available != nil && *rr.Available == false {
+		w := uint8(0)
+		rr.Weight = &w
+	}
+	*r = Report(rr)
+	return nil
 }
 
 func (r *Report) toJson() ([]byte, error) {

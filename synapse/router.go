@@ -104,6 +104,7 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 	validEvents := []ServiceReport{}
 
 	for _, event := range events {
+
 		event.service.ServerSort.Sort(&event.reports)
 
 		available, unavailable := event.AvailableUnavailable()
