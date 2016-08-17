@@ -62,7 +62,7 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 main:
 	for {
 		select {
-		case e := <-w.connectionEvents:
+		case e := <-w.connectionEvents: // TODO this cannot work since has session may have been fired before watching
 			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
 			switch e.Type {
 			case zk.EventSession | zk.EventType(0):

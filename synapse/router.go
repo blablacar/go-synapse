@@ -10,12 +10,13 @@ import (
 )
 
 type RouterCommon struct {
-	Type     string
-	Services []*Service
+	Type                        string
+	EventsBufferDurationInMilli int
+	Services                    []*Service
 
-	synapse    *Synapse
-	lastEvents map[*Service]*ServiceReport
-	fields     data.Fields
+	synapse                     *Synapse
+	lastEvents                  map[*Service]*ServiceReport
+	fields                      data.Fields
 }
 
 type Router interface {
@@ -30,6 +31,11 @@ type Router interface {
 func (r *RouterCommon) commonInit(router Router, synapse *Synapse) error {
 	r.fields = data.WithField("type", r.Type)
 	r.synapse = synapse
+
+	if r.EventsBufferDurationInMilli == 0 {
+		r.EventsBufferDurationInMilli = 500
+	}
+
 	r.lastEvents = make(map[*Service]*ServiceReport)
 	for _, service := range r.Services {
 		if err := service.Init(router, synapse); err != nil {
@@ -61,10 +67,22 @@ func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup,
 }
 
 func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router) {
-	var firstUpdateDone bool
-	var firstEventTimer *time.Timer
-	var firstUpdateMutex sync.Mutex
-	firstEvents := make(map[*Service]*ServiceReport)
+	updateMutex := sync.Mutex{}
+	bufEvents := make(map[*Service]*ServiceReport)
+	var eventsTimer *time.Timer
+
+	deferRun := func() {
+		logs.WithF(r.fields.WithField("events", bufEvents)).Debug("Run events buffer")
+		updateMutex.Lock()
+		reports := []ServiceReport{}
+		for _, s := range bufEvents {
+			reports = append(reports, *s)
+		}
+		bufEvents = make(map[*Service]*ServiceReport)
+		updateMutex.Unlock()
+
+		r.handleReport(reports, router)
+	}
 
 	for {
 		select {
@@ -73,29 +91,16 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 				return
 			}
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
-
-			firstUpdateMutex.Lock()
-			if !firstUpdateDone {
-				firstEvents[event.service] = &event
-				if firstEventTimer == nil {
-					firstEventTimer = time.AfterFunc(time.Second, func() {
-						firstUpdateMutex.Lock()
-						defer firstUpdateMutex.Unlock()
-						reports := []ServiceReport{}
-						for _, s := range firstEvents {
-							reports = append(reports, *s)
-						}
-
-						r.handleReport(reports, router)
-						firstEvents = nil
-						firstEventTimer = nil
-						firstUpdateDone = true
-					})
-				}
+			if eventsTimer != nil && !eventsTimer.Stop() {
+				logs.WithF(r.fields.WithField("event", event)).Error("Event Already fired")
 			} else {
-				r.handleReport([]ServiceReport{event}, router)
+				logs.WithF(r.fields.WithField("event", event)).Warn("Adding to buffer")
 			}
-			firstUpdateMutex.Unlock()
+
+			updateMutex.Lock()
+			bufEvents[event.service] = &event
+			updateMutex.Unlock()
+			eventsTimer = time.AfterFunc(time.Duration(r.EventsBufferDurationInMilli) * time.Millisecond, deferRun)
 		}
 	}
 }
