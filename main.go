@@ -94,11 +94,13 @@ func main() {
 				os.Exit(0)
 			}
 
-			level, err := logs.ParseLevel(logLevel)
-			if err != nil {
-				logs.WithField("value", logLevel).Fatal("Unknown log level")
+			if logLevel != "" {
+				level, err := logs.ParseLevel(logLevel)
+				if err != nil {
+					logs.WithField("value", logLevel).Fatal("Unknown log level")
+				}
+				logs.SetLevel(level)
 			}
-			logs.SetLevel(level)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) != 1 {
@@ -109,7 +111,7 @@ func main() {
 				logs.WithE(err).Fatal("Cannot start, failed to load configuration")
 			}
 
-			if err := synapse.Init(Version, BuildTime); err != nil {
+			if err := synapse.Init(Version, BuildTime, logLevel != ""); err != nil {
 				logs.WithE(err).Fatal("Failed to init nerve")
 			}
 
@@ -123,7 +125,8 @@ func main() {
 		},
 	}
 
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "L", "info", "Set log level")
+
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "L", "", "Set log level")
 	rootCmd.PersistentFlags().BoolVarP(&version, "version", "V", false, "Display version")
 
 	if err := rootCmd.Execute(); err != nil {

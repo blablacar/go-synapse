@@ -11,6 +11,7 @@ import (
 )
 
 type Synapse struct {
+	LogLevel *logs.Level
 	ApiHost string
 	ApiPort int
 	Routers []json.RawMessage
@@ -29,13 +30,17 @@ type Synapse struct {
 	routerStopWait   sync.WaitGroup
 }
 
-func (s *Synapse) Init(version string, buildTime string) error {
+func (s *Synapse) Init(version string, buildTime string, logLevelIsSet bool) error {
 	s.synapseBuildTime = buildTime
 	s.synapseVersion = version
 	s.routerStopper = make(chan struct{})
 
 	if s.ApiPort == 0 {
 		s.ApiPort = 3455
+	}
+
+	if !logLevelIsSet && s.LogLevel != nil {
+		logs.SetLevel(*s.LogLevel)
 	}
 
 	s.routerUpdateFailures = prometheus.NewGaugeVec(

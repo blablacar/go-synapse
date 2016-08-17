@@ -90,6 +90,7 @@ func (s *Service) Init(router Router, synapse *Synapse) error {
 		s.ServerSort = SORT_RANDOM
 	}
 
-	logs.WithF(s.fields.WithField("data", s)).Info("Service loaded")
+	logs.WithF(s.fields).Info("Service loaded")
+	logs.WithF(s.fields.WithField("data", s)).Debug("Service loaded")
 	return nil
 }
