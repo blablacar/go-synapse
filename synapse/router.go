@@ -14,9 +14,9 @@ type RouterCommon struct {
 	EventsBufferDurationInMilli int
 	Services                    []*Service
 
-	synapse                     *Synapse
-	lastEvents                  map[*Service]*ServiceReport
-	fields                      data.Fields
+	synapse    *Synapse
+	lastEvents map[*Service]*ServiceReport
+	fields     data.Fields
 }
 
 type Router interface {
@@ -90,17 +90,18 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 			if !ok {
 				return
 			}
+
 			logs.WithF(r.fields.WithField("event", event)).Debug("Router received an event")
 			if eventsTimer != nil && !eventsTimer.Stop() {
-				logs.WithF(r.fields.WithField("event", event)).Error("Event Already fired")
+				logs.WithF(r.fields.WithField("event", event)).Trace("Event Already fired")
 			} else {
-				logs.WithF(r.fields.WithField("event", event)).Warn("Adding to buffer")
+				logs.WithF(r.fields.WithField("event", event)).Trace("Event Added to buffer")
 			}
 
 			updateMutex.Lock()
 			bufEvents[event.service] = &event
 			updateMutex.Unlock()
-			eventsTimer = time.AfterFunc(time.Duration(r.EventsBufferDurationInMilli) * time.Millisecond, deferRun)
+			eventsTimer = time.AfterFunc(time.Duration(r.EventsBufferDurationInMilli)*time.Millisecond, deferRun)
 		}
 	}
 }

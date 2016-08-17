@@ -10,18 +10,22 @@ import (
 type WatcherCommon struct {
 	Type string
 
-	fields data.Fields
+	reports *reportMap
+	service *Service
+	fields  data.Fields
 }
 
 type Watcher interface {
-	Init() error
+	Init(service *Service) error
 	GetFields() data.Fields
 	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service)
 	GetServiceName() string
 }
 
-func (w *WatcherCommon) CommonInit() error {
+func (w *WatcherCommon) CommonInit(service *Service) error {
 	w.fields = data.WithField("type", w.Type)
+	w.service = service
+	w.reports = NewReportMap(service)
 	return nil
 }
 
@@ -39,7 +43,7 @@ func WatcherFromJson(content []byte, service *Service) (Watcher, error) {
 	var typedWatcher Watcher
 	switch t.Type {
 	case "zookeeper":
-		typedWatcher = NewWatcherZookeeper(service)
+		typedWatcher = NewWatcherZookeeper()
 	default:
 		return nil, errs.WithF(fields, "Unsupported watcher type")
 	}
@@ -48,7 +52,7 @@ func WatcherFromJson(content []byte, service *Service) (Watcher, error) {
 		return nil, errs.WithEF(err, fields, "Failed to unmarshall watcher")
 	}
 
-	if err := typedWatcher.Init(); err != nil {
+	if err := typedWatcher.Init(service); err != nil {
 		return nil, errs.WithEF(err, fields, "Failed to init watcher")
 	}
 	return typedWatcher, nil

@@ -16,15 +16,13 @@ type WatcherZookeeper struct {
 	Path           string
 	TimeoutInMilli int
 
-	reports          *reportMap
 	connection       *nerve.SharedZkConnection
 	connectionEvents <-chan zk.Event
 }
 
-func NewWatcherZookeeper(service *Service) *WatcherZookeeper {
+func NewWatcherZookeeper() *WatcherZookeeper {
 	w := &WatcherZookeeper{
 		TimeoutInMilli: 2000,
-		reports:        NewReportMap(service),
 	}
 	return w
 }
@@ -33,8 +31,8 @@ func (w *WatcherZookeeper) GetServiceName() string {
 	return strings.Replace(w.Path, "/", "_", -1)[1:]
 }
 
-func (w *WatcherZookeeper) Init() error {
-	if err := w.CommonInit(); err != nil {
+func (w *WatcherZookeeper) Init(service *Service) error {
+	if err := w.CommonInit(service); err != nil {
 		return errs.WithEF(err, w.fields, "Failed to init discovery")
 	}
 	w.fields = w.fields.WithField("path", w.Path)
@@ -57,22 +55,7 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 
 	watcherStop := make(chan struct{})
 	watcherStopWaiter := sync.WaitGroup{}
-	//go w.watchRoot(watcherStop, &watcherStopWaiter)
-
-main:
-	for {
-		select {
-		case e := <-w.connectionEvents: // TODO this cannot work since has session may have been fired before watching
-			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for connection")
-			switch e.Type {
-			case zk.EventSession | zk.EventType(0):
-				if e.State == zk.StateHasSession {
-					go w.watchRoot(watcherStop, &watcherStopWaiter)
-					break main
-				}
-			}
-		}
-	}
+	go w.watchRoot(watcherStop, &watcherStopWaiter)
 
 	<-stop
 	logs.WithF(w.fields).Debug("Stopping watcher")
@@ -88,21 +71,12 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	defer doneWaiter.Done()
 
 	for {
-		exist, _, existEvent, err := w.connection.Conn.ExistsW(w.Path)
-		if !exist {
-			logs.WithEF(err, w.fields).Warn("Path does not exists, waiting for creation")
-			w.reports.setNoNodes()
-			select {
-			case <-existEvent:
-			case <-stop:
-				return
-			}
-			logs.WithF(w.fields).Debug("Node exists now")
-		}
-
 		childs, _, rootEvents, err := w.connection.Conn.ChildrenW(w.Path)
 		if err != nil {
-			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path")
+			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, "watch").Inc()
+			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path. Retry in 1s")
+			<-time.After(time.Duration(1000) * time.Millisecond)
+			continue
 		}
 
 		if len(childs) == 0 {
@@ -141,9 +115,15 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 	for {
 		content, stats, childEvent, err := w.connection.Conn.GetW(node)
 		if err != nil {
-			logs.WithEF(err, fields).Warn("Failed to watch node. Probably died just after arrival.")
-			w.reports.removeNode(node)
-			return
+			if err == zk.ErrNoNode {
+				logs.WithEF(err, fields).Warn("Node disappear before watching")
+				w.reports.removeNode(node)
+				return
+			}
+			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, "watch").Inc()
+			logs.WithEF(err, fields).Warn("Failed to watch node, retry in 1s")
+			<-time.After(time.Duration(1000) * time.Millisecond)
+			continue
 		}
 
 		w.reports.addRawReport(node, content, fields, stats.Ctime)
@@ -155,7 +135,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			case zk.EventNodeDataChanged | zk.EventNodeCreated | zk.EventNotWatching:
 			// loop
 			case zk.EventNodeDeleted:
-				logs.WithF(w.fields.WithField("node", node)).Debug("Node deleted")
+				logs.WithF(fields).Debug("Node deleted")
 				w.reports.removeNode(node)
 				return
 			}

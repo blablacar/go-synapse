@@ -61,7 +61,7 @@ func (s *Service) Init(router Router, synapse *Synapse) error {
 	}
 	logs.WithF(watcher.GetFields()).Debug("Watcher loaded")
 	s.typedWatcher = watcher
-	if err := s.typedWatcher.Init(); err != nil {
+	if err := s.typedWatcher.Init(s); err != nil {
 		return errs.WithEF(err, s.fields, "Failed to init watcher")
 	}
 
