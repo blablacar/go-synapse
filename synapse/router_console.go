@@ -34,7 +34,7 @@ func (r *RouterConsole) Init(s *Synapse) error {
 
 func (r *RouterConsole) Update(reports []ServiceReport) error {
 	for _, report := range reports {
-		res, err := json.Marshal(report.reports)
+		res, err := json.Marshal(report.Reports)
 		if err != nil {
 			return errs.WithEF(err, r.fields, "Failed to prepare router update")
 		}

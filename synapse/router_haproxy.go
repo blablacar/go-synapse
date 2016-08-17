@@ -46,15 +46,15 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 }
 
 func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
-	previous := r.lastEvents[report.service]
+	previous := r.lastEvents[report.Service]
 
-	if previous == nil || len(previous.reports) != len(report.reports) {
+	if previous == nil || len(previous.Reports) != len(report.Reports) {
 		return false
 	}
 
-	for _, new := range report.reports {
+	for _, new := range report.Reports {
 		weightOnly := false
-		for _, old := range previous.reports {
+		for _, old := range previous.Reports {
 			if new.Host == old.Host &&
 				new.Port == old.Port &&
 				new.Name == old.Name &&
@@ -77,8 +77,8 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 	reloadNeeded := r.socketPath == ""
 	for _, report := range serviceReports {
 		front, back := r.toFrontendAndBackend(report)
-		r.Frontend[report.service.Name] = front
-		r.Backend[report.service.Name] = back
+		r.Frontend[report.Service.Name] = front
+		r.Backend[report.Service.Name] = back
 		if !r.isSocketUpdatable(report) {
 			reloadNeeded = true
 		}
@@ -100,25 +100,25 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 
 func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]string, []string) {
 	frontend := []string{}
-	if serviceReport.service.typedRouterOptions != nil {
-		for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Frontend {
+	if serviceReport.Service.typedRouterOptions != nil {
+		for _, option := range serviceReport.Service.typedRouterOptions.(HapRouterOptions).Frontend {
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend "+serviceReport.service.Name)
+	frontend = append(frontend, "default_backend "+serviceReport.Service.Name)
 
 	backend := []string{}
-	if serviceReport.service.typedRouterOptions != nil {
-		for _, option := range serviceReport.service.typedRouterOptions.(HapRouterOptions).Backend {
+	if serviceReport.Service.typedRouterOptions != nil {
+		for _, option := range serviceReport.Service.typedRouterOptions.(HapRouterOptions).Backend {
 			backend = append(backend, option)
 		}
 	}
 
 	var serverOptions HapServerOptions
-	if serviceReport.service.typedServerOptions != nil {
-		serverOptions = serviceReport.service.typedServerOptions.(HapServerOptions)
+	if serviceReport.Service.typedServerOptions != nil {
+		serverOptions = serviceReport.Service.typedServerOptions.(HapServerOptions)
 	}
-	for _, report := range serviceReport.reports {
+	for _, report := range serviceReport.Reports {
 		server := r.reportToHaProxyServer(report, serverOptions)
 		backend = append(backend, server)
 	}

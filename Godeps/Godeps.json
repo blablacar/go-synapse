@@ -16,6 +16,11 @@
 			"Rev": "3ac7bf7a47d159a033b107610db8a1b6575507a4"
 		},
 		{
+			"ImportPath": "github.com/blablacar/dgr/bin-templater/template",
+			"Comment": "73",
+			"Rev": "6c3dc86073c5ff77dc972490aab92926f2920149"
+		},
+		{
 			"ImportPath": "github.com/blablacar/go-nerve/nerve",
 			"Comment": "v12-3-g910d881",
 			"Rev": "910d881af1eeaedcae32a49796a5dc5dbc37a6af"
@@ -40,6 +45,10 @@
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
 			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/leekchan/gtf",
+			"Rev": "882e96b937c8506c67b5adf98ff1f84cd7b7b93a"
 		},
 		{
 			"ImportPath": "github.com/lib/pq",

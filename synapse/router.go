@@ -99,7 +99,7 @@ func (r *RouterCommon) eventsProcessor(events chan ServiceReport, router Router)
 			}
 
 			updateMutex.Lock()
-			bufEvents[event.service] = &event
+			bufEvents[event.Service] = &event
 			updateMutex.Unlock()
 			eventsTimer = time.AfterFunc(time.Duration(r.EventsBufferDurationInMilli)*time.Millisecond, deferRun)
 		}
@@ -111,21 +111,21 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 
 	for _, event := range events {
 
-		event.service.ServerSort.Sort(&event.reports)
+		event.Service.ServerSort.Sort(&event.Reports)
 
 		available, unavailable := event.AvailableUnavailable()
-		r.synapse.serviceAvailableCount.WithLabelValues(event.service.Name).Set(float64(available))
-		r.synapse.serviceUnavailableCount.WithLabelValues(event.service.Name).Set(float64(unavailable))
+		r.synapse.serviceAvailableCount.WithLabelValues(event.Service.Name).Set(float64(available))
+		r.synapse.serviceUnavailableCount.WithLabelValues(event.Service.Name).Set(float64(unavailable))
 
 		if !event.HasActiveServers() {
-			if r.lastEvents[event.service] == nil {
-				logs.WithF(event.service.fields).Warn("First Report has no active server. Not declaring in router")
+			if r.lastEvents[event.Service] == nil {
+				logs.WithF(event.Service.fields).Warn("First Report has no active server. Not declaring in router")
 			} else {
-				logs.WithF(event.service.fields).Error("Receiving report with no active server. Keeping previous report")
+				logs.WithF(event.Service.fields).Error("Receiving report with no active server. Keeping previous report")
 			}
 			continue
-		} else if r.lastEvents[event.service] == nil || r.lastEvents[event.service].HasActiveServers() != event.HasActiveServers() {
-			logs.WithF(event.service.fields.WithField("event", event)).Info("Server(s) available for router")
+		} else if r.lastEvents[event.Service] == nil || r.lastEvents[event.Service].HasActiveServers() != event.HasActiveServers() {
+			logs.WithF(event.Service.fields.WithField("event", event)).Info("Server(s) available for router")
 		}
 		validEvents = append(validEvents, event)
 	}
@@ -141,7 +141,7 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 	}
 
 	for _, e := range validEvents {
-		r.lastEvents[e.service] = &e
+		r.lastEvents[e.Service] = &e
 	}
 }
 
@@ -162,6 +162,8 @@ func RouterFromJson(content []byte, s *Synapse) (Router, error) {
 		typedRouter = NewRouterConsole()
 	case "haproxy":
 		typedRouter = NewRouterHaProxy()
+	case "template":
+		typedRouter = NewRouterTemplate()
 	default:
 		return nil, errs.WithF(fields, "Unsupported router type")
 	}

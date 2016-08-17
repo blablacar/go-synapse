@@ -1,0 +1,16 @@
+
+
+apiPort: 65534
+logLevel: info
+
+routers:
+  - type: template
+    destinationFile: /tmp/notexists/templated
+    templateFile: ./examples/template.tmpl
+    postTemplateCommand: [/bin/bash, -c, "echo 'ZZ' > /tmp/DDDD"]
+
+    services:
+        - watcher:
+            type: zookeeper
+            hosts: [ "10.20.135.132:2181","10.20.143.132:2181","10.20.159.132:2181","10.20.159.133:2181","10.20.143.133:2181" ]
+            path: /services/es/es_site_search

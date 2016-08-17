@@ -63,7 +63,7 @@ func (w *WatcherZookeeper) changedToReport(reportsStop <-chan struct{}, events c
 		select {
 		case <-w.reports.changed:
 			reports := w.reports.getValues()
-			events <- ServiceReport{service: s, reports: reports}
+			events <- ServiceReport{Service: s, Reports: reports}
 		case <-reportsStop:
 			return
 		}

@@ -1,0 +1,6 @@
+default:
+  tripsearch:
+    elasticsearch:
+      hosts: [{{- range . -}}
+{{- if eq .Service.Name "services_es_es_site_search" -}}{{- range .Reports}}'{{.Host}}:{{.Port}}', {{end}}{{- end -}}
+{{- end -}}]

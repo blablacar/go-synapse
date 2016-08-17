@@ -9,16 +9,16 @@ import (
 )
 
 type ServiceReport struct {
-	service *Service
-	reports []Report
+	Service *Service
+	Reports []Report
 }
 
 func (s *ServiceReport) String() string {
-	return s.service.Name + " " + fmt.Sprint(s.reports)
+	return s.Service.Name + " " + fmt.Sprint(s.Reports)
 }
 
 func (s *ServiceReport) HasActiveServers() bool {
-	for _, report := range s.reports {
+	for _, report := range s.Reports {
 		if report.Available == nil || *report.Available {
 			return true
 		}
@@ -28,7 +28,7 @@ func (s *ServiceReport) HasActiveServers() bool {
 
 func (s *ServiceReport) AvailableUnavailable() (int, int) {
 	var available, unavailable int
-	for _, report := range s.reports {
+	for _, report := range s.Reports {
 		if report.Available == nil || *report.Available {
 			available++
 		} else {
