@@ -12,9 +12,9 @@ import (
 
 type Synapse struct {
 	LogLevel *logs.Level
-	ApiHost string
-	ApiPort int
-	Routers []json.RawMessage
+	ApiHost  string
+	ApiPort  int
+	Routers  []json.RawMessage
 
 	serviceAvailableCount   *prometheus.GaugeVec
 	serviceUnavailableCount *prometheus.GaugeVec

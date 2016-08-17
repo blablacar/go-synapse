@@ -125,7 +125,6 @@ func main() {
 		},
 	}
 
-
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "L", "", "Set log level")
 	rootCmd.PersistentFlags().BoolVarP(&version, "version", "V", false, "Display version")
 
