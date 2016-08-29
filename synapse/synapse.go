@@ -30,6 +30,7 @@ type Synapse struct {
 	routerStopWait   sync.WaitGroup
 }
 
+
 func (s *Synapse) Init(version string, buildTime string, logLevelIsSet bool) error {
 	s.synapseBuildTime = buildTime
 	s.synapseVersion = version

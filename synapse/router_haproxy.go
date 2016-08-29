@@ -9,6 +9,8 @@ import (
 	"sync"
 )
 
+const PrometheusLabelSocketSuffix = "_socket"
+
 type RouterHaProxy struct {
 	RouterCommon
 	HaProxyClient
@@ -28,12 +30,16 @@ func (r *RouterHaProxy) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
 }
 
 func (r *RouterHaProxy) Init(s *Synapse) error {
+
 	if err := r.commonInit(r, s); err != nil {
 		return errs.WithEF(err, r.RouterCommon.fields, "Failed to init common router")
 	}
 	if err := r.HaProxyClient.Init(); err != nil {
 		return errs.WithEF(err, r.RouterCommon.fields, "Failed to init haproxy client")
 	}
+
+	r.synapse.routerUpdateFailures.WithLabelValues(r.Type + PrometheusLabelSocketSuffix).Set(0)
+	r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Set(0)
 
 	if r.ConfigPath == "" {
 		return errs.WithF(r.RouterCommon.fields, "ConfigPath is required for haproxy router")
@@ -89,7 +95,7 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")
 		}
 	} else if err := r.SocketUpdate(); err != nil {
-		r.synapse.routerUpdateFailures.WithLabelValues(r.Type + "_socket").Inc()
+		r.synapse.routerUpdateFailures.WithLabelValues(r.Type + PrometheusLabelSocketSuffix).Inc()
 		logs.WithEF(err, r.RouterCommon.fields).Error("Update by Socket failed. Reloading instead")
 		if err := r.Reload(); err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields, "Failed to reload haproxy")

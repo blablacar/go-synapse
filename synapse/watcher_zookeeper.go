@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const PrometheusLabelWatch = "watch"
+
 type WatcherZookeeper struct {
 	WatcherCommon
 	Hosts          []string
@@ -49,6 +51,7 @@ func (w *WatcherZookeeper) Init(service *Service) error {
 func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service) {
 	doneWaiter.Add(1)
 	defer doneWaiter.Done()
+	w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Set(0)
 
 	reportsStop := make(chan struct{})
 	go w.changedToReport(reportsStop, events, s)
@@ -73,7 +76,7 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 	for {
 		childs, _, rootEvents, err := w.connection.Conn.ChildrenW(w.Path)
 		if err != nil {
-			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, "watch").Inc()
+			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Inc()
 			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path. Retry in 1s")
 			<-time.After(time.Duration(1000) * time.Millisecond)
 			continue
@@ -120,7 +123,7 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 				w.reports.removeNode(node)
 				return
 			}
-			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, "watch").Inc()
+			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Inc()
 			logs.WithEF(err, fields).Warn("Failed to watch node, retry in 1s")
 			<-time.After(time.Duration(1000) * time.Millisecond)
 			continue

@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+const PrometheusLabelContent = "content"
+
 type reportMap struct {
 	sync.RWMutex
 	service *Service
@@ -39,7 +41,7 @@ func (n *reportMap) setNoNodes() {
 func (n *reportMap) addRawReport(name string, content []byte, failFields data.Fields, creationTime int64) {
 	r := nerve.Report{}
 	if err := json.Unmarshal(content, &r); err != nil {
-		n.service.synapse.watcherFailures.WithLabelValues(n.service.Name, "content").Inc()
+		n.service.synapse.watcherFailures.WithLabelValues(n.service.Name, PrometheusLabelContent).Inc()
 		logs.WithEF(err, failFields.WithField("content", string(content))).Warn("Failed to unmarshal report")
 		return
 	}
