@@ -1,8 +1,8 @@
 package synapse
 
 import (
-	"sync"
 	"context"
+	"sync"
 )
 
 //type Context interface {
@@ -32,15 +32,15 @@ type SynapseContextImpl struct {
 }
 
 type ContextImpl struct {
-	stop chan struct{} //TODO this should not be bidirectionnal
+	stop       chan struct{} //TODO this should not be bidirectionnal
 	doneWaiter *sync.WaitGroup
-	oneshot bool
+	oneshot    bool
 }
 
 func newContext(oneshot bool) *ContextImpl {
 	return &ContextImpl{
-		stop: make(chan struct{}),
+		stop:       make(chan struct{}),
 		doneWaiter: &sync.WaitGroup{},
-		oneshot: oneshot,
+		oneshot:    oneshot,
 	}
 }

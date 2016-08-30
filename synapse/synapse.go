@@ -10,24 +10,23 @@ import (
 )
 
 type Synapse struct {
-	LogLevel                *logs.Level
-	ApiHost                 string
-	ApiPort                 int
-	Routers                 []json.RawMessage
+	LogLevel *logs.Level
+	ApiHost  string
+	ApiPort  int
+	Routers  []json.RawMessage
 
 	serviceAvailableCount   *prometheus.GaugeVec
 	serviceUnavailableCount *prometheus.GaugeVec
 	routerUpdateFailures    *prometheus.GaugeVec
 	watcherFailures         *prometheus.GaugeVec
 
-	fields                  data.Fields
-	synapseVersion          string
-	synapseBuildTime        string
-	apiListener             net.Listener
-	typedRouters            []Router
-	context                 *ContextImpl
+	fields           data.Fields
+	synapseVersion   string
+	synapseBuildTime string
+	apiListener      net.Listener
+	typedRouters     []Router
+	context          *ContextImpl
 }
-
 
 func (s *Synapse) Init(version string, buildTime string, logLevelIsSet bool) error {
 	s.synapseBuildTime = buildTime

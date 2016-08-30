@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"github.com/blablacar/dgr/bin-templater/template"
+	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/errs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"github.com/blablacar/go-nerve/nerve"
 )
 
 type RouterTemplate struct {
@@ -20,12 +20,11 @@ type RouterTemplate struct {
 	PostTemplateCommand               []string
 	PostTemplateCommandTimeoutInMilli int
 
-	tmpl                              *template.Templating
+	tmpl *template.Templating
 }
 
 func NewRouterTemplate() *RouterTemplate {
-	return &RouterTemplate{
-	}
+	return &RouterTemplate{}
 }
 
 func (r *RouterTemplate) Run(context *ContextImpl) {

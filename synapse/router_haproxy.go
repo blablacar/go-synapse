@@ -2,16 +2,16 @@ package synapse
 
 import (
 	"bytes"
-	"encoding/json"
-	"github.com/n0rad/go-erlog/errs"
-	"github.com/n0rad/go-erlog/logs"
-	"strconv"
-	"text/template"
-	"strings"
-	"math/rand"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
+	"github.com/n0rad/go-erlog/logs"
+	"math/rand"
+	"strconv"
+	"strings"
+	"text/template"
 )
 
 const PrometheusLabelSocketSuffix = "_socket"
@@ -19,7 +19,6 @@ const PrometheusLabelSocketSuffix = "_socket"
 type RouterHaProxy struct {
 	RouterCommon
 	HaProxyClient
-
 }
 type HapRouterOptions struct {
 	Frontend []string
@@ -138,7 +137,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 	for _, report := range serviceReport.Reports {
 		server, err := r.reportToHaProxyServer(report, serverOptions)
 		if err != nil {
-			return nil, nil, errs.WithEF(err, r.RouterCommon.fields.WithField("name",report.Name), "Failed to prepare backend for server")
+			return nil, nil, errs.WithEF(err, r.RouterCommon.fields.WithField("name", report.Name), "Failed to prepare backend for server")
 		}
 		backend = append(backend, server)
 	}
@@ -168,7 +167,6 @@ func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapSe
 	}
 	buffer.WriteString(" ")
 	buffer.WriteString(res)
-
 
 	return buffer.String(), nil
 }
@@ -220,8 +218,6 @@ func (r *RouterHaProxy) ParseRouterOptions(data []byte) (interface{}, error) {
 	return routerOptions, nil
 }
 
-
-
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
@@ -255,6 +251,7 @@ func RandString(n int) string {
 }
 
 var TemplateFunctions map[string]interface{}
+
 func init() {
 	TemplateFunctions = make(map[string]interface{})
 	TemplateFunctions["randString"] = RandString
