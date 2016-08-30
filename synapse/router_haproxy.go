@@ -7,6 +7,12 @@ import (
 	"github.com/n0rad/go-erlog/logs"
 	"strconv"
 	"sync"
+	"text/template"
+	"strings"
+	"math/rand"
+	"crypto/sha1"
+	"fmt"
+	"github.com/n0rad/go-erlog/data"
 )
 
 const PrometheusLabelSocketSuffix = "_socket"
@@ -14,12 +20,15 @@ const PrometheusLabelSocketSuffix = "_socket"
 type RouterHaProxy struct {
 	RouterCommon
 	HaProxyClient
+
 }
 type HapRouterOptions struct {
 	Frontend []string
 	Backend  []string
 }
-type HapServerOptions string
+type HapServerOptionsTemplate struct {
+	*template.Template
+}
 
 func NewRouterHaProxy() *RouterHaProxy {
 	return &RouterHaProxy{}
@@ -82,7 +91,10 @@ func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 	reloadNeeded := r.socketPath == ""
 	for _, report := range serviceReports {
-		front, back := r.toFrontendAndBackend(report)
+		front, back, err := r.toFrontendAndBackend(report)
+		if err != nil {
+			return errs.WithEF(err, r.RouterCommon.fields.WithField("report", report), "Failed to prepare frontend and backend")
+		}
 		r.Frontend[report.Service.Name] = front
 		r.Backend[report.Service.Name] = back
 		if !r.isSocketUpdatable(report) {
@@ -104,7 +116,7 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 	return nil
 }
 
-func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]string, []string) {
+func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]string, []string, error) {
 	frontend := []string{}
 	if serviceReport.Service.typedRouterOptions != nil {
 		for _, option := range serviceReport.Service.typedRouterOptions.(HapRouterOptions).Frontend {
@@ -120,19 +132,22 @@ func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]str
 		}
 	}
 
-	var serverOptions HapServerOptions
+	var serverOptions HapServerOptionsTemplate
 	if serviceReport.Service.typedServerOptions != nil {
-		serverOptions = serviceReport.Service.typedServerOptions.(HapServerOptions)
+		serverOptions = serviceReport.Service.typedServerOptions.(HapServerOptionsTemplate)
 	}
 	for _, report := range serviceReport.Reports {
-		server := r.reportToHaProxyServer(report, serverOptions)
+		server, err := r.reportToHaProxyServer(report, serverOptions)
+		if err != nil {
+			return nil, nil, errs.WithEF(err, r.RouterCommon.fields.WithField("name",report.Name), "Failed to prepare backend for server")
+		}
 		backend = append(backend, server)
 	}
 
-	return frontend, backend
+	return frontend, backend, nil
 }
 
-func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapServerOptions) string {
+func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapServerOptionsTemplate) (string, error) {
 	var buffer bytes.Buffer
 	buffer.WriteString("server ")
 	buffer.WriteString(report.Name)
@@ -147,26 +162,102 @@ func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapSe
 	}
 	buffer.WriteString(" ")
 	buffer.WriteString(report.HaProxyServerOptions)
+
+	res, err := renderServerOptionsTemplate(report, serverOptions)
+	if err != nil {
+		return "", errs.WithEF(err, r.RouterCommon.fields, "Failed to teom")
+	}
 	buffer.WriteString(" ")
-	buffer.WriteString(string(serverOptions))
-	return buffer.String()
+	buffer.WriteString(res)
+
+
+	return buffer.String(), nil
+}
+
+func renderServerOptionsTemplate(report Report, serverOptions HapServerOptionsTemplate) (string, error) {
+	if serverOptions.Template == nil {
+		return "", nil
+	}
+	var buff bytes.Buffer
+	if err := serverOptions.Execute(&buff, struct {
+		Name string
+	}{
+		Name: report.Name,
+	}); err != nil {
+		return "", errs.WithE(err, "Failed to template serverOptions")
+	}
+	res := buff.String()
+	if strings.Contains(res, "<no value>") {
+		return "", errs.WithF(data.WithField("content", res), "serverOption templating has <no value>")
+	}
+	return res, nil
 }
 
 func (r *RouterHaProxy) ParseServerOptions(data []byte) (interface{}, error) {
+	if len(data) == 0 {
+		return nil, nil
+	}
 
-	var serversOptions HapServerOptions
+	fields := r.RouterCommon.fields.WithField("content", string(data))
+	var serversOptions string
 	err := json.Unmarshal(data, &serversOptions)
 	if err != nil {
-		return nil, errs.WithEF(err, r.RouterCommon.fields.WithField("content", data), "Failed to Unmarshal serverOptions")
+		return nil, errs.WithEF(err, fields, "Failed to Unmarshal serverOptions")
 	}
-	return serversOptions, nil
+
+	template, err := template.New("serverOptions").Funcs(TemplateFunctions).Parse(serversOptions)
+	if err != nil {
+		return nil, errs.WithEF(err, fields, "Failed to parse serversOptions template")
+	}
+	return HapServerOptionsTemplate{template}, nil
 }
 
 func (r *RouterHaProxy) ParseRouterOptions(data []byte) (interface{}, error) {
 	routerOptions := HapRouterOptions{}
 	err := json.Unmarshal(data, &routerOptions)
 	if err != nil {
-		return nil, errs.WithEF(err, r.RouterCommon.fields.WithField("content", data), "Failed to Unmarshal routerOptions")
+		return nil, errs.WithEF(err, r.RouterCommon.fields.WithField("content", string(data)), "Failed to Unmarshal routerOptions")
 	}
 	return routerOptions, nil
+}
+
+
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
+
+func Sha1String(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	bs := h.Sum(nil)
+	return fmt.Sprintf("%x", bs)
+}
+
+func RandString(n int) string {
+	b := make([]byte, n)
+	// A rand.Int63() generates 63 random bits, enough for letterIdxMax letters!
+	for i, cache, remain := n-1, rand.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = rand.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
+	}
+
+	return string(b)
+}
+
+var TemplateFunctions map[string]interface{}
+func init() {
+	TemplateFunctions = make(map[string]interface{})
+	TemplateFunctions["randString"] = RandString
+	TemplateFunctions["sha1String"] = Sha1String
 }

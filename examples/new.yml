@@ -35,7 +35,7 @@ routers:
           type: zookeeper
           hosts: ['localhost:2181']
           path: /services/api/myapi
-        serverOptions: check inter 2s rise 3 fall 2
+        serverOptions: cookie {{sha1String .Name}} check inter 2s rise 3 fall 2
         routerOptions:
           frontend:
             - mode tcp
