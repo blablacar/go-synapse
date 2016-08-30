@@ -79,6 +79,10 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Inc()
 			logs.WithEF(err, w.fields.WithField("path", w.Path)).Warn("Cannot watch root service path. Retry in 1s")
 			<-time.After(time.Duration(1000) * time.Millisecond)
+
+			if isStopped(stop) {
+				return
+			}
 			continue
 		}
 
@@ -126,6 +130,10 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 			w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Inc()
 			logs.WithEF(err, fields).Warn("Failed to watch node, retry in 1s")
 			<-time.After(time.Duration(1000) * time.Millisecond)
+
+			if isStopped(stop) {
+				return
+			}
 			continue
 		}
 
@@ -147,4 +155,13 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 		}
 
 	}
+}
+
+func isStopped(stop <-chan struct{}) bool {
+	select {
+	case <-stop:
+		return true
+	default:
+	}
+	return false
 }

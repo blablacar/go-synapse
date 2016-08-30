@@ -8,4 +8,4 @@ nl-qdisc-add --dev=lo --parent=1:4 --id=40: --update plug --buffer
 fail=$?
 nl-qdisc-add --dev=lo --parent=1:4 --id=40: --update plug --release-indefinit
 
-exit 1
+exit ${fail}
