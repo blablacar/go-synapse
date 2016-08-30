@@ -83,6 +83,7 @@ func main() {
 
 	var logLevel string
 	var version bool
+	var oneshot bool
 
 	rootCmd := &cobra.Command{
 		Use: "synapse config.yml",
@@ -112,13 +113,11 @@ func main() {
 			}
 
 			if err := synapse.Init(Version, BuildTime, logLevel != ""); err != nil {
-				logs.WithE(err).Fatal("Failed to init nerve")
+				logs.WithE(err).Fatal("Failed to init synapse")
 			}
 
-			startStatus := make(chan error)
-			go synapse.Start(startStatus)
-			if status := <-startStatus; status != nil {
-				logs.WithE(status).Fatal("Failed to start nerve")
+			if err := synapse.Start(oneshot); err != nil {
+				logs.WithE(err).Fatal("Failed to start synapse")
 			}
 			waitForSignal()
 			synapse.Stop()
@@ -127,6 +126,7 @@ func main() {
 
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "L", "", "Set log level")
 	rootCmd.PersistentFlags().BoolVarP(&version, "version", "V", false, "Display version")
+	//rootCmd.PersistentFlags().BoolVarP(&oneshot, "oneshot", "O", false, "run watchers/router only once and exit")
 
 	if err := rootCmd.Execute(); err != nil {
 		logs.WithE(err).Fatal("Failed to process args")

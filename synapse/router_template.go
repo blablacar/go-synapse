@@ -7,7 +7,6 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"io/ioutil"
 	"os"
-	"sync"
 	"path/filepath"
 	"github.com/blablacar/go-nerve/nerve"
 )
@@ -29,8 +28,8 @@ func NewRouterTemplate() *RouterTemplate {
 	}
 }
 
-func (r *RouterTemplate) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
-	r.RunCommon(stop, stopWaiter, r)
+func (r *RouterTemplate) Run(context *ContextImpl) {
+	r.RunCommon(context, r)
 }
 
 func (r *RouterTemplate) Init(s *Synapse) error {

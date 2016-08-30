@@ -7,34 +7,31 @@ import (
 	"github.com/n0rad/go-erlog/logs"
 	"github.com/prometheus/client_golang/prometheus"
 	"net"
-	"sync"
 )
 
 type Synapse struct {
-	LogLevel *logs.Level
-	ApiHost  string
-	ApiPort  int
-	Routers  []json.RawMessage
+	LogLevel                *logs.Level
+	ApiHost                 string
+	ApiPort                 int
+	Routers                 []json.RawMessage
 
 	serviceAvailableCount   *prometheus.GaugeVec
 	serviceUnavailableCount *prometheus.GaugeVec
 	routerUpdateFailures    *prometheus.GaugeVec
 	watcherFailures         *prometheus.GaugeVec
 
-	fields           data.Fields
-	synapseVersion   string
-	synapseBuildTime string
-	apiListener      net.Listener
-	typedRouters     []Router
-	routerStopper    chan struct{}
-	routerStopWait   sync.WaitGroup
+	fields                  data.Fields
+	synapseVersion          string
+	synapseBuildTime        string
+	apiListener             net.Listener
+	typedRouters            []Router
+	context                 *ContextImpl
 }
 
 
 func (s *Synapse) Init(version string, buildTime string, logLevelIsSet bool) error {
 	s.synapseBuildTime = buildTime
 	s.synapseVersion = version
-	s.routerStopper = make(chan struct{})
 
 	if s.ApiPort == 0 {
 		s.ApiPort = 3455
@@ -99,21 +96,20 @@ func (s *Synapse) Init(version string, buildTime string, logLevelIsSet bool) err
 	return nil
 }
 
-func (s *Synapse) Start(startStatus chan<- error) {
+func (s *Synapse) Start(oneshot bool) error {
 	logs.Info("Starting synapse")
+
+	s.context = newContext(oneshot)
 	for _, routers := range s.typedRouters {
-		go routers.Run(s.routerStopper, &s.routerStopWait)
+		go routers.Run(s.context)
 	}
-	res := s.startApi()
-	if startStatus != nil {
-		startStatus <- res
-	}
+	return s.startApi()
 }
 
 func (s *Synapse) Stop() {
 	logs.Info("Stopping synapse")
 	s.stopApi()
-	close(s.routerStopper)
-	s.routerStopWait.Wait()
+	close(s.context.stop)
+	s.context.doneWaiter.Wait()
 	logs.Debug("All router stopped")
 }

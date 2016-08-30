@@ -10,6 +10,7 @@ import (
 )
 
 type Nerve struct {
+	LogLevel *logs.Level
 	ApiHost  string
 	ApiPort  int
 	Services []*Service
@@ -26,11 +27,15 @@ type Nerve struct {
 	servicesStopWait     sync.WaitGroup
 }
 
-func (n *Nerve) Init(version string, buildTime string) error {
+func (n *Nerve) Init(version string, buildTime string, logLevelIsSet bool) error {
 	n.nerveVersion = version
 	n.nerveBuildTime = buildTime
 	if n.ApiPort == 0 {
 		n.ApiPort = 3454
+	}
+
+	if !logLevelIsSet && n.LogLevel != nil {
+		logs.SetLevel(*n.LogLevel)
 	}
 
 	n.checkerFailureCount = prometheus.NewCounterVec(
@@ -38,28 +43,28 @@ func (n *Nerve) Init(version string, buildTime string) error {
 			Namespace: "nerve",
 			Name:      "checker_failure_total",
 			Help:      "Counter of failed check",
-		}, []string{"name", "type"})
+		}, []string{"name", "ip", "port", "type"})
 
 	n.execFailureCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "nerve",
 			Name:      "exec_failure_total",
 			Help:      "Counter of failed exec",
-		}, []string{"name", "type"})
+		}, []string{"name", "ip", "port", "type"})
 
 	n.reporterFailureCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "nerve",
 			Name:      "reporter_failure_total",
 			Help:      "Counter of report failure",
-		}, []string{"name", "type"})
+		}, []string{"name", "ip", "port", "type"})
 
 	n.availableGauge = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: "nerve",
 			Name:      "service_available",
 			Help:      "service available status",
-		}, []string{"name"})
+		}, []string{"name", "ip", "port"})
 
 	if err := prometheus.Register(n.execFailureCount); err != nil {
 		return errs.WithEF(err, n.fields, "Failed to register prometheus exec_failure_total")

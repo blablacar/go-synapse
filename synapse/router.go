@@ -22,7 +22,7 @@ type RouterCommon struct {
 type Router interface {
 	Init(s *Synapse) error
 	getFields() data.Fields
-	Run(stop chan struct{}, stopWaiter *sync.WaitGroup)
+	Run(context *ContextImpl)
 	Update(serviceReports []ServiceReport) error
 	ParseServerOptions(data []byte) (interface{}, error)
 	ParseRouterOptions(data []byte) (interface{}, error)
@@ -46,22 +46,21 @@ func (r *RouterCommon) commonInit(router Router, synapse *Synapse) error {
 	return nil
 }
 
-func (r *RouterCommon) RunCommon(stop chan struct{}, stopWaiter *sync.WaitGroup, router Router) {
-	stopWaiter.Add(1)
-	defer stopWaiter.Done()
+func (r *RouterCommon) RunCommon(context *ContextImpl, router Router) {
+	context.doneWaiter.Add(1)
+	defer context.doneWaiter.Done()
 
 	events := make(chan ServiceReport)
-	watcherStop := make(chan struct{})
-	watcherStopWaiter := sync.WaitGroup{}
+	watcherContext := newContext(context.oneshot)
 	for _, service := range r.Services {
-		go service.typedWatcher.Watch(watcherStop, &watcherStopWaiter, events, service)
+		go service.typedWatcher.Watch(watcherContext, events, service)
 	}
 
 	go r.eventsProcessor(events, router)
 
-	<-stop
-	close(watcherStop)
-	watcherStopWaiter.Wait()
+	<-context.stop
+	close(watcherContext.stop)
+	watcherContext.doneWaiter.Wait()
 	logs.WithF(r.fields).Debug("All Watchers stopped")
 	close(events)
 }

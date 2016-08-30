@@ -30,6 +30,8 @@ type Service struct {
 	EnableCheckStableCommand             []string
 	EnableWarmupIntervalInMilli          int
 	EnableWarmupMaxDurationInMilli       int
+	DisableShutdownCommand               []string
+	DisableShutdownMaxDurationInMilli    int
 	DisableGracefullyDoneCommand         []string
 	DisableGracefullyDoneIntervalInMilli int
 	DisableMaxDurationInMilli            int
@@ -85,6 +87,10 @@ func (s *Service) Init(n *Nerve) error {
 
 	if s.PreAvailableMaxDurationInMilli == 0 {
 		s.PreAvailableMaxDurationInMilli = 1000
+	}
+
+	if s.DisableShutdownMaxDurationInMilli == 0 {
+		s.DisableShutdownMaxDurationInMilli = 30000
 	}
 
 	if s.DisableGracefullyDoneIntervalInMilli == 0 {
@@ -156,7 +162,7 @@ func (s *Service) Start(stopper <-chan struct{}, stopWait *sync.WaitGroup) {
 			if *s.SetServiceAsDownOnShutdown {
 				wait := &sync.WaitGroup{}
 				wait.Add(1)
-				s.Disable(wait)
+				s.Disable(wait, false)
 				wait.Wait()
 			}
 			for reporter := range s.typedReportersWithReported {
@@ -211,7 +217,7 @@ func (s *Service) runNotify() {
 
 		if len(s.PreAvailableCommand) > 0 {
 			if err := ExecCommand(s.PreAvailableCommand, s.PreAvailableMaxDurationInMilli); err != nil {
-				s.nerve.execFailureCount.WithLabelValues(s.Name, "pre-available").Inc()
+				s.nerve.execFailureCount.WithLabelValues(s.Name, "pre-available", s.Host, strconv.Itoa(s.Port)).Inc()
 				logs.WithEF(err, s.fields).Warn("Pre available command failed")
 			}
 		}
@@ -219,7 +225,7 @@ func (s *Service) runNotify() {
 		s.warmup()
 	} else {
 		if !s.NoMetrics {
-			s.nerve.availableGauge.WithLabelValues(s.Name).Set(0)
+			s.nerve.availableGauge.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port)).Set(0)
 		}
 		s.currentWeightIndex = 0
 		logs.WithEF(*s.currentStatus, s.fields).Warn("Service is not available")
@@ -257,7 +263,7 @@ func (s *Service) Warmup(giveUp <-chan struct{}) {
 
 		if len(s.EnableCheckStableCommand) > 0 {
 			if err := ExecCommand(s.EnableCheckStableCommand, s.EnableWarmupIntervalInMilli); err != nil {
-				s.nerve.execFailureCount.WithLabelValues(s.Name, "check-stable").Inc()
+				s.nerve.execFailureCount.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port), "check-stable").Inc()
 				logs.WithEF(err, s.fields).Warn("Check stable command failed. Reset weight")
 				s.currentWeightIndex = 0
 			} else {
@@ -294,7 +300,7 @@ func (s *Service) Warmup(giveUp <-chan struct{}) {
 
 func (s *Service) reportAndTellIfAtLeastOneReported(required bool) bool {
 	if !s.NoMetrics {
-		s.nerve.availableGauge.WithLabelValues(s.Name).Set(float64(s.CurrentWeight()))
+		s.nerve.availableGauge.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port)).Set(float64(s.CurrentWeight()))
 	}
 	if s.currentStatus == nil {
 		return false // no status yet
@@ -316,7 +322,7 @@ func (s *Service) reportAndTellIfAtLeastOneReported(required bool) bool {
 					logs.WithEF(err, s.fields.WithFields(reporter.GetFields())).Error("Failed to report")
 				}
 				if !s.NoMetrics {
-					s.nerve.reporterFailureCount.WithLabelValues(s.Name, reporter.getCommon().Type).Inc()
+					s.nerve.reporterFailureCount.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port), reporter.getCommon().Type).Inc()
 				}
 				s.typedReportersWithReported[reporter] = false
 			} else {
@@ -347,7 +353,7 @@ func (s *Service) CurrentWeight() uint8 {
 	return res
 }
 
-func (s *Service) Disable(doneWaiter *sync.WaitGroup) {
+func (s *Service) Disable(doneWaiter *sync.WaitGroup, shutdown bool) {
 	start := time.Now()
 	logs.WithF(s.fields).Info("Disabling service")
 	defer doneWaiter.Done()
@@ -355,6 +361,14 @@ func (s *Service) Disable(doneWaiter *sync.WaitGroup) {
 	s.forceEnable = false
 	s.disabled = errs.With("Service is disabled")
 	s.runNotify()
+
+	if len(s.DisableShutdownCommand) > 0 && shutdown {
+		logs.WithF(s.fields).Debug("Run disableShutdown command")
+		if err := ExecCommand(s.DisableShutdownCommand, s.DisableShutdownMaxDurationInMilli); err != nil {
+			logs.WithEF(err, s.fields).Error("Shutdown result")
+			s.nerve.execFailureCount.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port), "disable-shutdown").Inc()
+		}
+	}
 
 	if len(s.DisableGracefullyDoneCommand) > 0 {
 		for {
@@ -364,7 +378,7 @@ func (s *Service) Disable(doneWaiter *sync.WaitGroup) {
 				break
 			}
 
-			s.nerve.execFailureCount.WithLabelValues(s.Name, "disable-grace").Inc()
+			s.nerve.execFailureCount.WithLabelValues(s.Name, s.Host, strconv.Itoa(s.Port), "disable-grace").Inc()
 			logs.WithEF(err, s.fields).Debug("Gracefull check command fail")
 
 			select {

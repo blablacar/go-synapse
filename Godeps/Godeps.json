@@ -17,13 +17,13 @@
 		},
 		{
 			"ImportPath": "github.com/blablacar/dgr/bin-templater/template",
-			"Comment": "73",
-			"Rev": "6c3dc86073c5ff77dc972490aab92926f2920149"
+			"Comment": "74",
+			"Rev": "ba4d957976539072486ecaf833863f3da5427a96"
 		},
 		{
 			"ImportPath": "github.com/blablacar/go-nerve/nerve",
-			"Comment": "v12-3-g910d881",
-			"Rev": "910d881af1eeaedcae32a49796a5dc5dbc37a6af"
+			"Comment": "v14-4-gdb55d0c",
+			"Rev": "db55d0cdc2c2d49727c0c52927fae56b25dad444"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",
@@ -71,23 +71,23 @@
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog",
-			"Rev": "550d21ccbd54e31d3a105bacf55aff478f32bdff"
+			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/data",
-			"Rev": "550d21ccbd54e31d3a105bacf55aff478f32bdff"
+			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/errs",
-			"Rev": "550d21ccbd54e31d3a105bacf55aff478f32bdff"
+			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/logs",
-			"Rev": "550d21ccbd54e31d3a105bacf55aff478f32bdff"
+			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/register",
-			"Rev": "550d21ccbd54e31d3a105bacf55aff478f32bdff"
+			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",

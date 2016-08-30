@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
-	"sync"
 )
 
 type WatcherCommon struct {
@@ -18,7 +17,7 @@ type WatcherCommon struct {
 type Watcher interface {
 	Init(service *Service) error
 	GetFields() data.Fields
-	Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service)
+	Watch(context *ContextImpl, events chan<- ServiceReport, s *Service)
 	GetServiceName() string
 }
 

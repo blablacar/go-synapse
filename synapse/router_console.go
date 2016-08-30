@@ -6,7 +6,6 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"io"
 	"os"
-	"sync"
 )
 
 type RouterConsole struct {
@@ -21,8 +20,8 @@ func NewRouterConsole() *RouterConsole {
 	}
 }
 
-func (r *RouterConsole) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
-	r.RunCommon(stop, stopWaiter, r)
+func (r *RouterConsole) Run(context *ContextImpl) {
+	r.RunCommon(context, r)
 }
 
 func (r *RouterConsole) Init(s *Synapse) error {

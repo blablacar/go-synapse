@@ -48,9 +48,9 @@ func (w *WatcherZookeeper) Init(service *Service) error {
 	return nil
 }
 
-func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGroup, events chan<- ServiceReport, s *Service) {
-	doneWaiter.Add(1)
-	defer doneWaiter.Done()
+func (w *WatcherZookeeper) Watch(context *ContextImpl, events chan<- ServiceReport, s *Service) {
+	context.doneWaiter.Add(1)
+	defer context.doneWaiter.Done()
 	w.service.synapse.watcherFailures.WithLabelValues(w.service.Name, PrometheusLabelWatch).Set(0)
 
 	reportsStop := make(chan struct{})
@@ -60,7 +60,7 @@ func (w *WatcherZookeeper) Watch(stop <-chan struct{}, doneWaiter *sync.WaitGrou
 	watcherStopWaiter := sync.WaitGroup{}
 	go w.watchRoot(watcherStop, &watcherStopWaiter)
 
-	<-stop
+	<-context.stop
 	logs.WithF(w.fields).Debug("Stopping watcher")
 	close(watcherStop)
 	watcherStopWaiter.Wait()

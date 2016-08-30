@@ -6,7 +6,6 @@ import (
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
 	"strconv"
-	"sync"
 	"text/template"
 	"strings"
 	"math/rand"
@@ -34,8 +33,8 @@ func NewRouterHaProxy() *RouterHaProxy {
 	return &RouterHaProxy{}
 }
 
-func (r *RouterHaProxy) Run(stop chan struct{}, stopWaiter *sync.WaitGroup) {
-	r.RunCommon(stop, stopWaiter, r)
+func (r *RouterHaProxy) Run(context *ContextImpl) {
+	r.RunCommon(context, r)
 }
 
 func (r *RouterHaProxy) Init(s *Synapse) error {
