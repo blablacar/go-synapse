@@ -96,6 +96,13 @@ func (w *WatcherZookeeper) watchRoot(stop <-chan struct{}, doneWaiter *sync.Wait
 			}
 		}
 
+		//if context.oneshot {
+		//	go func() {
+		//		<-rootEvents
+		//	}()
+		//	return
+		//}
+
 		select {
 		case e := <-rootEvents:
 			logs.WithF(w.fields.WithField("event", e)).Trace("Receiving event for root node")
@@ -138,6 +145,13 @@ func (w *WatcherZookeeper) watchNode(node string, stop <-chan struct{}, doneWait
 		}
 
 		w.reports.addRawReport(node, content, fields, stats.Ctime)
+
+		//if context.oneshot {
+		//	go func() {
+		//		<-rootEvents
+		//	}()
+		//	return
+		//}
 
 		select {
 		case e := <-childEvent:
