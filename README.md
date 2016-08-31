@@ -31,10 +31,19 @@ It's a YAML file. You can find examples [here](https://github.com/blablacar/go-s
 
 Very minimal configuration file with only one service :
 ```yaml
+routers:
   - type: haproxy
     configPath: /tmp/hap.config
     reloadCommand: [./examples/haproxy_reload.sh]
 
+    services:
+      - watcher:
+          type: zookeeper
+          hosts: ['localhost:2181']
+          path: /services/api/myapi
+        routerOptions:
+          frontend:
+            - bind 127.0.0.1:5679
 ```
 
 
