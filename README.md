@@ -6,34 +6,46 @@ Synapse is a Service discovery mecanism. It watch servers for services in a back
 This simplify service communication with backends and allow auto discovery & hot reconfiguration of the communication.
 This provide better services discovery and faul-tolerant communication between services
 
-At BlaBlaCar, we use synapse for all communications between services (>200) to discover backend nodes (> 2000). [Nerve](https://github.com/blablacar/go-nerve) report node statuses to a Zookeeper and synapse watch it to update an Hapoxy.
+At BlaBlaCar, we use a synapse for each service node that want to communicate with another service and discover those backend nodes (> 2000). [Nerve](https://github.com/blablacar/go-nerve) report node statuses to a Zookeeper and synapse watch it to update a local Hapoxy. All outgoing communication is going through this haproxy.
 
 ## Airbnb
 
 Go-Synapse is a go rewrite of Airbnb's [Synapse](https://github.com/airbnb/synapse) with additiional features.
 
-## Motivation
+## Installation
 
-Why rewrote the Airbnb's software ? Same story that as [GO-Nerve](https://github.com/blablacar/go-nerve). A mix between our own lack of ruby knowledge and our goal to have a single binary. Why Go (because we're also easy with Java) ? After compilation, we have a single binary which is easier to deploy on our full container infrastructure! No need to deploy the full ruby stack, nor java one.
+Download the latest version on the [release page](https://github.com/blablacar/go-synapse/releases).
 
-Synapse emerged from the need to maintain high-availability applications in the cloud.
+Create a configuration file base on the doc or [examples](https://github.com/blablacar/go-synapse/tree/master/examples).
 
-Why choosing Synapse at first ? The answer is not so simple to explain. But, let's try !
+Run with `./synapse synapse-config.yml`
 
-First, at BlaBlaCar, we have a lot of services written in PHP. And even if the language can help you to going fast, it have some important caveats. The most important one here is the lack of server context. After each call, php empty all local states. When you want to maintain complex topology of your services, it's far from easy. You can try to wrote lots of code to circumvent the problem. Here at BBC, we choose to always use HAProxy between PHP and backends.
-It worked for well for us during a short period of time... When you have only 2 or 3 HAproxy to maintain and to serve all of your services, you can do it easily (it's really not that hard). At BlaBlaCar we used Keepalived for the HA of HAProxy, and Chef, to maintain our rules. After a while, you have to split your HAProxy cause of your services growth... And it become quickly very hard to manage!
-The best way we found to have a scalable use of HAProxy was to add it on each container using a different entry for each services. Now, the problem was how to maintain the service state, and all backends available in a high changing world (thx to container). With Chef, we converged every 30mins before. Even with a lot of imagination, we don't want to converge each 500ms with a tools like Chef. So we came to Nerve/Synapse. And we use only the ZooKeeper / HAProxy part of original Airbnb's [Synapse](https://github.com/airbnb/synapse)
+### Building
 
-## How Synapse Works ##
+Just clone the repository and run `./gomake`
 
-Synapse runs on your application servers; here at BlaBlaCar, we just run it on lots of containers we deploy.
-The heart of synapse is actually [HAProxy](http://haproxy.1wt.eu/), a stable and proven routing component.
-For every external service that your application talks to, we assign a synapse local port on localhost.
-Synapse creates a proxy from the local port to the service, and you reconfigure your application to talk to the proxy.
 
-GO-Synapse comes with one `watcher`, which are responsible for service discovery.
-The synapse watchers take care of re-configuring the proxy so that it always points at available servers.
-We've included the one that query zookeeper.
+## Configuration
+
+It's a YAML file. You can find examples [here](https://github.com/blablacar/go-synapse/tree/master/examples)
+
+Very minimal configuration file with only one service :
+```yaml
+  - type: haproxy
+    configPath: /tmp/hap.config
+    reloadCommand: [./examples/haproxy_reload.sh]
+
+```
+
+
+
+
+
+
+
+
+
+
 
 ## Example Migration ##
 
