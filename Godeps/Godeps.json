@@ -71,23 +71,23 @@
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog",
-			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
+			"Rev": "c5bbaec90f832fe084053e01880cbccdd6c04b62"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/data",
-			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
+			"Rev": "c5bbaec90f832fe084053e01880cbccdd6c04b62"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/errs",
-			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
+			"Rev": "c5bbaec90f832fe084053e01880cbccdd6c04b62"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/logs",
-			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
+			"Rev": "c5bbaec90f832fe084053e01880cbccdd6c04b62"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/register",
-			"Rev": "263d1c5c2375a836c0cf61582f1879551fded927"
+			"Rev": "c5bbaec90f832fe084053e01880cbccdd6c04b62"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
