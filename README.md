@@ -33,13 +33,17 @@ Very minimal configuration file with only one service :
 ```yaml
 routers:
   - type: console
+    eventsBufferDurationInMilli: 500
     services:
-      - watcher:
+      - serverSort: random          # random, name, date
+        watcher:
           type: zookeeper
           hosts: ['localhost:2181']
           path: /services/api/myapi
-#        serverOptions:              # depend on router type
-#        routerOptions:              # depend on router type
+        serverOptions:              
+          ...                       # depend on router type
+        routerOptions:              
+          ...                       # depend on router type
 ```
 
 Root attributes:
