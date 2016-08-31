@@ -1,20 +1,18 @@
 [![Build Status](https://travis-ci.org/blablacar/go-synapse.png?branch=master)](https://travis-ci.org/blablacar/go-synapse)
 
-___/!\ This Software is in Alpha Stage! Don't use it in production, until it's considered Stable /!\___
+# Synapse
 
-# GO-Synapse #
+Synapse is a Service discovery mecanism. It watch servers for services in a backend and report status in a router.
+This simplify service communication with backends and allow auto discovery & hot reconfiguration of the communication.
+This provide better services discovery and faul-tolerant communication between services
 
-Go-Synapse is a new system for service discovery, a Go rewritten work of Airbnb's [Synapse](https://github.com/airbnb/synapse).
-Synapse solves the problem of automated fail-over in the cloud, where failover via network re-configuration is impossible (or not desirable).
-The end result is the ability to connect internal services together in a scalable, fault-tolerant way.
+At BlaBlaCar, we use synapse for all communications between services (>200) to discover backend nodes (> 2000). [Nerve](https://github.com/blablacar/go-nerve) report node statuses to a Zookeeper and synapse watch it to update an Hapoxy.
 
-## Airbnb ##
+## Airbnb
 
-Thank you guy to write a so nice piece of software with Synapse. But we really want to stop deploying a full ruby stack on our containers ! Our first thoughts were to ask you to rewrote it in C/C++/Java/Go. But our team convince ourself that it was not the best behavior to have at first. So we rewrote it in Go (See more explanations in the Motivation section below).
+Go-Synapse is a go rewrite of Airbnb's [Synapse](https://github.com/airbnb/synapse) with additiional features.
 
-We want to thanks the huge work made by Airbnb's engineering team. We love you guy's ! Your tools (nerve & synapse) are in the center of our infrastructure at BlaBlaCar. Even if we fork Synapse to rewrote in Go, we will continue to follow your repository, and consider it as the reference. Big Up to YOU! We send you all love and kisses you deserve (and even more).
-
-## Motivation ##
+## Motivation
 
 Why rewrote the Airbnb's software ? Same story that as [GO-Nerve](https://github.com/blablacar/go-nerve). A mix between our own lack of ruby knowledge and our goal to have a single binary. Why Go (because we're also easy with Java) ? After compilation, we have a single binary which is easier to deploy on our full container infrastructure! No need to deploy the full ruby stack, nor java one.
 
