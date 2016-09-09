@@ -92,8 +92,8 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 		if err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields.WithField("report", report), "Failed to prepare frontend and backend")
 		}
-		r.Frontend[report.Service.Name + "_" + strconv.Itoa(report.Service.id)] = front
-		r.Backend[report.Service.Name + "_" + strconv.Itoa(report.Service.id)] = back
+		r.Frontend[report.Service.Name+"_"+strconv.Itoa(report.Service.id)] = front
+		r.Backend[report.Service.Name+"_"+strconv.Itoa(report.Service.id)] = back
 		if !r.isSocketUpdatable(report) {
 			reloadNeeded = true
 		}
@@ -120,7 +120,7 @@ func (r *RouterHaProxy) toFrontendAndBackend(report ServiceReport) ([]string, []
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend "+ report.Service.Name + "_" + strconv.Itoa(report.Service.id))
+	frontend = append(frontend, "default_backend "+report.Service.Name+"_"+strconv.Itoa(report.Service.id))
 
 	backend := []string{}
 	if report.Service.typedRouterOptions != nil {
