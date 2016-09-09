@@ -137,6 +137,7 @@ func (f *ErlogWriterAppender) logError(b *bytes.Buffer, event *LogEvent, errors 
 	for err := errors; err != nil; {
 		if e, ok := err.(*errs.EntryError); ok {
 			if e == nil {
+				err = nil
 				continue
 			}
 			path, line := findFileAndName(e.Stack)

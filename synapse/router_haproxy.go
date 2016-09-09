@@ -82,7 +82,6 @@ func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 			return false
 		}
 	}
-
 	return true
 }
 
@@ -93,8 +92,8 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 		if err != nil {
 			return errs.WithEF(err, r.RouterCommon.fields.WithField("report", report), "Failed to prepare frontend and backend")
 		}
-		r.Frontend[report.Service.Name] = front
-		r.Backend[report.Service.Name] = back
+		r.Frontend[report.Service.Name + "_" + strconv.Itoa(report.Service.id)] = front
+		r.Backend[report.Service.Name + "_" + strconv.Itoa(report.Service.id)] = back
 		if !r.isSocketUpdatable(report) {
 			reloadNeeded = true
 		}
@@ -114,27 +113,27 @@ func (r *RouterHaProxy) Update(serviceReports []ServiceReport) error {
 	return nil
 }
 
-func (r *RouterHaProxy) toFrontendAndBackend(serviceReport ServiceReport) ([]string, []string, error) {
+func (r *RouterHaProxy) toFrontendAndBackend(report ServiceReport) ([]string, []string, error) {
 	frontend := []string{}
-	if serviceReport.Service.typedRouterOptions != nil {
-		for _, option := range serviceReport.Service.typedRouterOptions.(HapRouterOptions).Frontend {
+	if report.Service.typedRouterOptions != nil {
+		for _, option := range report.Service.typedRouterOptions.(HapRouterOptions).Frontend {
 			frontend = append(frontend, option)
 		}
 	}
-	frontend = append(frontend, "default_backend "+serviceReport.Service.Name)
+	frontend = append(frontend, "default_backend "+ report.Service.Name + "_" + strconv.Itoa(report.Service.id))
 
 	backend := []string{}
-	if serviceReport.Service.typedRouterOptions != nil {
-		for _, option := range serviceReport.Service.typedRouterOptions.(HapRouterOptions).Backend {
+	if report.Service.typedRouterOptions != nil {
+		for _, option := range report.Service.typedRouterOptions.(HapRouterOptions).Backend {
 			backend = append(backend, option)
 		}
 	}
 
 	var serverOptions HapServerOptionsTemplate
-	if serviceReport.Service.typedServerOptions != nil {
-		serverOptions = serviceReport.Service.typedServerOptions.(HapServerOptionsTemplate)
+	if report.Service.typedServerOptions != nil {
+		serverOptions = report.Service.typedServerOptions.(HapServerOptionsTemplate)
 	}
-	for _, report := range serviceReport.Reports {
+	for _, report := range report.Reports {
 		server, err := r.reportToHaProxyServer(report, serverOptions)
 		if err != nil {
 			return nil, nil, errs.WithEF(err, r.RouterCommon.fields.WithField("name", report.Name), "Failed to prepare backend for server")

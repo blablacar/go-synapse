@@ -6,6 +6,7 @@ import (
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
+	"sync"
 )
 
 type ServiceReport struct {
@@ -38,6 +39,9 @@ func (s *ServiceReport) AvailableUnavailable() (int, int) {
 	return available, unavailable
 }
 
+var idCount = 1
+var idCountMutex = sync.Mutex{}
+
 type Service struct {
 	Name          string
 	Watcher       json.RawMessage
@@ -45,6 +49,7 @@ type Service struct {
 	ServerOptions json.RawMessage
 	ServerSort    ReportSortType
 
+	id                 int
 	synapse            *Synapse
 	fields             data.Fields
 	typedWatcher       Watcher
@@ -53,6 +58,11 @@ type Service struct {
 }
 
 func (s *Service) Init(router Router, synapse *Synapse) error {
+	idCountMutex.Lock()
+	s.id = idCount
+	idCount++
+	idCountMutex.Unlock()
+
 	s.synapse = synapse
 	s.fields = router.getFields().WithField("service", s.Name)
 	watcher, err := WatcherFromJson(s.Watcher, s)
