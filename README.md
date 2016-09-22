@@ -80,6 +80,8 @@ routers:
   - type: haproxy
     configPath: /tmp/hap.config
     reloadCommand: [./examples/haproxy_reload.sh]
+    reloadTimeoutInMilli: 1000
+    reloadMinIntervalInMilli: 500
     global:                                               # []string
       - stats   socket  /tmp/hap.socket level admin
     defaults:                                             # []string
