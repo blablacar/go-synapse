@@ -201,7 +201,7 @@ func (hap *HaProxyClient) writeConfig() error {
 	var b bytes.Buffer
 	writer := bufio.NewWriter(&b)
 	if err := hap.template.Execute(writer, hap); err != nil {
-		return errs.WithEF(err, hap.fields, "Failed to temlate haproxy configuration file")
+		return errs.WithEF(err, hap.fields, "Failed to template haproxy configuration file")
 	}
 	if err := writer.Flush(); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to flush buffer")

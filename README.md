@@ -2,15 +2,15 @@
 
 # Synapse
 
-Synapse is a Service discovery mecanism. It watch servers for services in a backend and report status in a router.
+Synapse is a Service discovery mechanism. It watch servers for services in a backend and report status in a router.
 This simplify service communication with backends and allow auto discovery & hot reconfiguration of the communication.
-This provide better services discovery and faul-tolerant communication between services
+This provide better services discovery and fault-tolerant communication between services
 
 At BlaBlaCar, we use a synapse for each service node that want to communicate with another service and discover those backend nodes (> 2000). [Nerve](https://github.com/blablacar/go-nerve) report node statuses to a Zookeeper and synapse watch it to update a local Hapoxy. All outgoing communication is going through this haproxy.
 
 ## Airbnb
 
-Go-Synapse is a go rewrite of Airbnb's [Synapse](https://github.com/airbnb/synapse) with additiional features.
+Go-Synapse is a go rewrite of Airbnb's [Synapse](https://github.com/airbnb/synapse) with additional features.
 
 ## Installation
 
