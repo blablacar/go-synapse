@@ -24,6 +24,7 @@ type Router interface {
 	getFields() data.Fields
 	Run(context *ContextImpl)
 	Update(serviceReports []ServiceReport) error
+	GetService(name string) (*Service, error)
 	ParseServerOptions(data []byte) (interface{}, error)
 	ParseRouterOptions(data []byte) (interface{}, error)
 }
@@ -109,7 +110,6 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 	validEvents := []ServiceReport{}
 
 	for _, event := range events {
-
 		event.Service.ServerSort.Sort(&event.Reports)
 
 		available, unavailable := event.AvailableUnavailable()
@@ -126,7 +126,8 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 		} else if r.lastEvents[event.Service.Name] == nil || r.lastEvents[event.Service.Name].HasActiveServers() != event.HasActiveServers() {
 			logs.WithF(event.Service.fields.WithField("event", event)).Info("Server(s) available for router")
 		}
-		validEvents = append(validEvents, event)
+
+		validEvents = append(validEvents, r.FilterCorrelations(event, events))
 	}
 
 	if len(validEvents) == 0 {
@@ -143,6 +144,39 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 		r.lastEvents[e.Service.Name] = &validEvents[i]
 	}
 
+}
+
+func (r *RouterCommon) FilterCorrelations(current ServiceReport, serviceReports []ServiceReport) ServiceReport {
+	if current.Service.ServerCorrelation.OtherServiceName == "" {
+		return current
+	}
+
+	filtered := r.FilterCorrelation(current, r.lastEvents[current.Service.ServerCorrelation.OtherServiceName])
+	for _, SameUpdateReports2 := range serviceReports {
+		if current.Service.ServerCorrelation.OtherServiceName == SameUpdateReports2.Service.Name {
+			logs.WithF(r.fields.WithField("current", current)).Debug("Found other correlation service in same report")
+			filtered = r.FilterCorrelation(current, &SameUpdateReports2)
+			break
+		}
+	}
+	return filtered
+}
+
+func (r *RouterCommon) FilterCorrelation(reports ServiceReport, otherServiceReport *ServiceReport) ServiceReport {
+	if otherServiceReport == nil {
+		return reports
+	}
+
+	res := []Report{}
+	for _, report := range reports.Reports {
+		// TODO support other filter
+		if len(otherServiceReport.Reports) > 0 && report.Name == otherServiceReport.Reports[0].Name {
+			logs.WithF(r.fields.WithField("server", report.Name)).Debug("Removing correlated server")
+			continue
+		}
+		res = append(res, report)
+	}
+	return ServiceReport{reports.Service, res}
 }
 
 func (r *RouterCommon) getFields() data.Fields {
@@ -176,4 +210,14 @@ func RouterFromJson(content []byte, s *Synapse) (Router, error) {
 		return nil, errs.WithEF(err, fields, "Failed to init router")
 	}
 	return typedRouter, nil
+}
+
+func (r *RouterCommon) GetService(name string) (*Service, error) {
+	for _, s := range r.Services {
+		if s.Name == name {
+			return s, nil
+		}
+	}
+	return nil, errs.WithF(r.fields.WithField("name", name), "Cannot found service with this name")
+
 }

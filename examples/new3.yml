@@ -7,15 +7,20 @@ routers:
 #    socketFile: /run/haproxy.socket
 
     services:
-#      - port: 4444
-#        watcher:
-#          type: zookeeper
-#          hosts: ['localhost:2181']
-#          path: /services/tripsearch
+      - port: 4444
+        watcher:
+          type: zookeeper
+          hosts: ['localhost:2181']
+          path: /monitoring/mysql/db_write
 
       - port: 9999
         serverSort: date
         watcher:
           type: zookeeper
           hosts: ['localhost:2181']
-          path: /monitoring/api/myapi
+          path: /monitoring/mysql/db_read
+
+        serverCorrelation: # this will remove the first server declared in otherService from this service
+          type: excludeServer
+          otherServiceName: toto
+          scope: first
