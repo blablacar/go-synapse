@@ -130,6 +130,23 @@ routers:
 ```
 
 
+## Services
+
+```ỳaml
+routers:
+  - type: ...
+
+    services:
+      - name: db-read
+        watcher:
+           ...
+        serverCorrelation: # this will remove the first server declared in otherService from this service
+          type: excludeServer
+          otherServiceName: db-write
+          scope: first
+
+```
+
 ## Watcher config
 
 ### zookeeper watcher
@@ -145,6 +162,6 @@ routers:
             hosts: [ 'localhost:2181', 'localhost:2182' ]
             path: /services/es/es_site_search
             timeoutInMilli: 2000
-                        
+
 ```
 
