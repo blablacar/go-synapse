@@ -75,15 +75,15 @@
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/data",
-			"Rev": "d2278035863763980c7e312c6b813293f2ba4892"
+			"Rev": "4b041df7334d6008f8ceaa9e6ed03d43aa9c1356"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/errs",
-			"Rev": "d2278035863763980c7e312c6b813293f2ba4892"
+			"Rev": "4b041df7334d6008f8ceaa9e6ed03d43aa9c1356"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/logs",
-			"Rev": "d2278035863763980c7e312c6b813293f2ba4892"
+			"Rev": "4b041df7334d6008f8ceaa9e6ed03d43aa9c1356"
 		},
 		{
 			"ImportPath": "github.com/n0rad/go-erlog/register",
