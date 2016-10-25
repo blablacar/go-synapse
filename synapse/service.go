@@ -54,14 +54,24 @@ func (s *ServiceReport) AvailableUnavailable() (int, int) {
 var idCount = 1
 var idCountMutex = sync.Mutex{}
 
+type ServerCorrelation struct {
+	Type             string
+	OtherServiceName string
+	Scope            string
+
+	otherService *Service
+}
+
 type Service struct {
-	Name          string
-	Watcher       json.RawMessage
-	RouterOptions json.RawMessage
-	ServerOptions json.RawMessage
-	ServerSort    ReportSortType
+	Name              string
+	Watcher           json.RawMessage
+	RouterOptions     json.RawMessage
+	ServerOptions     json.RawMessage
+	ServerSort        ReportSortType
+	ServerCorrelation ServerCorrelation
 
 	id                 int
+	router             Router
 	synapse            *Synapse
 	fields             data.Fields
 	typedWatcher       Watcher
@@ -79,6 +89,7 @@ func (s *Service) Init(router Router, synapse *Synapse) error {
 	idCount++
 	idCountMutex.Unlock()
 
+	s.router = router
 	s.synapse = synapse
 	s.fields = router.getFields().WithField("service", s.Name)
 	watcher, err := WatcherFromJson(s.Watcher, s)
@@ -89,6 +100,20 @@ func (s *Service) Init(router Router, synapse *Synapse) error {
 	s.typedWatcher = watcher
 	if err := s.typedWatcher.Init(s); err != nil {
 		return errs.WithEF(err, s.fields, "Failed to init watcher")
+	}
+
+	if s.ServerCorrelation.Type != "" {
+		if s.ServerCorrelation.Type != "excludeServer" {
+			return errs.WithF(s.fields.WithField("type", s.ServerCorrelation.Type), "Unsupported serverCorrelation type")
+		}
+		if s.ServerCorrelation.Scope != "first" {
+			return errs.WithF(s.fields.WithField("scope", s.ServerCorrelation.Scope), "Unsupported serverCorrelation scope")
+		}
+		if os, err := s.router.GetService(s.ServerCorrelation.OtherServiceName); err != nil {
+			return errs.WithF(s.fields.WithField("otherServiceName", s.ServerCorrelation.OtherServiceName), "Other service not found for this name")
+		} else {
+			s.ServerCorrelation.otherService = os
+		}
 	}
 
 	if s.Name == "" {

@@ -79,6 +79,7 @@ func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 		}
 
 		if !weightOnly {
+
 			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing or options has changed")
 			return false
 		}

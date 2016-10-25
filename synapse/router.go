@@ -24,6 +24,7 @@ type Router interface {
 	getFields() data.Fields
 	Run(context *ContextImpl)
 	Update(serviceReports []ServiceReport) error
+	GetService(name string) (*Service, error)
 	ParseServerOptions(data []byte) (interface{}, error)
 	ParseRouterOptions(data []byte) (interface{}, error)
 }
@@ -176,4 +177,14 @@ func RouterFromJson(content []byte, s *Synapse) (Router, error) {
 		return nil, errs.WithEF(err, fields, "Failed to init router")
 	}
 	return typedRouter, nil
+}
+
+func (r *RouterCommon) GetService(name string) (*Service, error) {
+	for _, s := range r.Services {
+		if s.Name == name {
+			return s, nil
+		}
+	}
+	return nil, errs.WithF(r.fields.WithField("name", name), "Cannot found service with this name")
+
 }
