@@ -1,8 +1,8 @@
 package synapse
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
@@ -14,8 +14,20 @@ type ServiceReport struct {
 	Reports []Report
 }
 
-func (s *ServiceReport) String() string {
-	return s.Service.Name + " " + fmt.Sprint(s.Reports)
+func (s ServiceReport) String() string {
+	var buff bytes.Buffer
+	buff.WriteString(s.Service.Name)
+	buff.WriteRune('[')
+	for i, r := range s.Reports {
+		if i > 0 {
+			buff.WriteString(", ")
+		}
+		buff.WriteRune('\'')
+		buff.WriteString(r.String())
+		buff.WriteRune('\'')
+	}
+	buff.WriteRune(']')
+	return buff.String()
 }
 
 func (s *ServiceReport) HasActiveServers() bool {
@@ -55,6 +67,10 @@ type Service struct {
 	typedWatcher       Watcher
 	typedRouterOptions interface{}
 	typedServerOptions interface{}
+}
+
+func (s *Service) String() string {
+	return s.Name
 }
 
 func (s *Service) Init(router Router, synapse *Synapse) error {

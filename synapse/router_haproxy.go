@@ -59,9 +59,10 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 }
 
 func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
-	previous := r.lastEvents[report.Service]
+	previous := r.lastEvents[report.Service.Name]
 
 	if previous == nil || len(previous.Reports) != len(report.Reports) {
+		logs.WithF(r.RouterCommon.fields.WithField("previous", previous).WithField("current", report)).Debug("Report length is different")
 		return false
 	}
 

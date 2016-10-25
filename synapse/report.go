@@ -22,6 +22,10 @@ type Report struct {
 	CreationTime int64
 }
 
+func (r Report) String() string {
+	return r.Report.String()
+}
+
 func NewReportMap(service *Service) *reportMap {
 	n := reportMap{
 		service: service,

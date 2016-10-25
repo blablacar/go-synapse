@@ -124,7 +124,7 @@ func (hap *HaProxyClient) Reload() error {
 		return errs.WithEF(err, hap.fields, "Failed to write haproxy configuration")
 	}
 
-	logs.WithF(hap.fields).Debug("Reloading haproxy")
+	logs.WithF(hap.fields).Info("Reloading haproxy")
 	env := append(os.Environ(), "HAP_CONFIG="+hap.ConfigPath)
 
 	waitDuration := hap.lastReload.Add(time.Duration(hap.ReloadMinIntervalInMilli) * time.Millisecond).Sub(time.Now())
