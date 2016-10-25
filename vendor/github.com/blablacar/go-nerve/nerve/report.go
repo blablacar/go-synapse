@@ -73,7 +73,7 @@ func toReport(status error, s *Service) Report {
 		Available:            &boolStatus,
 		Host:                 s.Host,
 		Port:                 Port(s.Port),
-		Name:                 s.Name,
+		Name:                 s.ReporterServiceName,
 		Weight:               &weight,
 		HaProxyServerOptions: s.HaproxyServerOptions,
 		Labels:               s.Labels,
@@ -86,8 +86,11 @@ func toReport(status error, s *Service) Report {
 
 func (r *Report) String() string {
 	var buffer bytes.Buffer
-
-	buffer.WriteString(fmt.Sprint(r.Available))
+	if r.Available == nil {
+		buffer.WriteString(fmt.Sprint(true))
+	} else {
+		buffer.WriteString(fmt.Sprint(*r.Available))
+	}
 	buffer.WriteString(" ")
 	buffer.WriteString(r.Name)
 	buffer.WriteString(" ")

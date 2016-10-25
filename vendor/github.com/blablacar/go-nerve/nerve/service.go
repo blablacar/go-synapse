@@ -19,10 +19,12 @@ type Service struct {
 	Weight                     uint8
 	Checks                     []json.RawMessage
 	Reporters                  []json.RawMessage
+	ReporterServiceName        string
 	ReportReplayInMilli        int
 	HaproxyServerOptions       string
 	SetServiceAsDownOnShutdown *bool
 	Labels                     map[string]string
+	ExcludeFromGlobalDisable   bool
 
 	PreAvailableCommand            []string
 	PreAvailableMaxDurationInMilli int
@@ -66,7 +68,9 @@ func (s *Service) Init(n *Nerve) error {
 	if s.Name == "" {
 		s.Name = s.Host + ":" + strconv.Itoa(s.Port)
 	}
-
+	if s.ReporterServiceName == "" {
+		s.ReporterServiceName = s.Name
+	}
 	if s.SetServiceAsDownOnShutdown == nil {
 		val := true
 		s.SetServiceAsDownOnShutdown = &val

@@ -22,8 +22,8 @@
 		},
 		{
 			"ImportPath": "github.com/blablacar/go-nerve/nerve",
-			"Comment": "v14-4-gdb55d0c",
-			"Rev": "db55d0cdc2c2d49727c0c52927fae56b25dad444"
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",
@@ -148,6 +148,111 @@
 		{
 			"ImportPath": "gopkg.in/yaml.v2",
 			"Rev": "7ad95dd0798a40da1ccdff6dff35fd177b5edf40"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/go-sql-driver/mysql",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/lib/pq",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/n0rad/go-erlog/data",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/n0rad/go-erlog/errs",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/n0rad/go-erlog/logs",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/client_golang/prometheus",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/samuel/go-zookeeper/zk",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/streadway/amqp",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/gopkg.in/macaron.v1",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/lib/pq/oid",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/beorn7/perks/quantile",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/golang/protobuf/proto",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/client_model/go",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/common/expfmt",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/procfs",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/Unknwon/com",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/go-macaron/inject",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/gopkg.in/ini.v1",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/matttproud/golang_protobuf_extensions/pbutil",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
+		},
+		{
+			"ImportPath": "github.com/blablacar/go-nerve/vendor/github.com/prometheus/common/model",
+			"Comment": "v15-1-ga2699eb",
+			"Rev": "a2699eb053521c5852dee099f05598dbd2c850f1"
 		}
 	]
 }
