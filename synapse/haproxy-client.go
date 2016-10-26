@@ -61,7 +61,6 @@ type HaProxyClient struct {
 
 	reloadMutex sync.Mutex
 	socketPath  string
-	socketRegex *regexp.Regexp
 	weightRegex *regexp.Regexp
 	lastReload  time.Time
 	template    *template.Template
@@ -89,7 +88,6 @@ func (hap *HaProxyClient) Init() error {
 		hap.ReloadTimeoutInMilli = 1000
 	}
 
-	hap.socketRegex = regexp.MustCompile(`stats[\s]+socket[\s]+(\S+)`)
 	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
 
 	hap.socketPath = hap.findSocketPath()
@@ -107,8 +105,9 @@ func (hap *HaProxyClient) Init() error {
 }
 
 func (hap *HaProxyClient) findSocketPath() string {
+	socketRegex := regexp.MustCompile(`stats[\s]+socket[\s]+(\S+)`)
 	for _, str := range hap.Global {
-		res := hap.socketRegex.FindStringSubmatch(str)
+		res := socketRegex.FindStringSubmatch(str)
 		if len(res) > 1 {
 			return res[1]
 		}
