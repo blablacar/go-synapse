@@ -132,7 +132,7 @@ routers:
 
 ## Services
 
-```ỳaml
+```yaml
 routers:
   - type: ...
 
