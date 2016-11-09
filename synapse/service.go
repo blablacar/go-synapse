@@ -70,6 +70,7 @@ type Service struct {
 	ServerSort        ReportSortType
 	ServerCorrelation ServerCorrelation
 
+	reported           bool
 	id                 int
 	router             Router
 	synapse            *Synapse

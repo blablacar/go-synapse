@@ -25,8 +25,20 @@ type Router interface {
 	Run(context *ContextImpl)
 	Update(serviceReports []ServiceReport) error
 	GetService(name string) (*Service, error)
+	ServicesNames() []string
 	ParseServerOptions(data []byte) (interface{}, error)
 	ParseRouterOptions(data []byte) (interface{}, error)
+}
+
+func (r *RouterCommon) ServicesNames() []string {
+	keys := make([]string, len(r.Services))
+
+	i := 0
+	for _, service := range r.Services {
+		keys[i] = service.Name
+		i++
+	}
+	return keys
 }
 
 func (r *RouterCommon) commonInit(router Router, synapse *Synapse) error {
@@ -141,6 +153,7 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 	}
 
 	for i, e := range validEvents {
+		e.Service.reported = true
 		r.lastEvents[e.Service.Name] = &validEvents[i]
 	}
 

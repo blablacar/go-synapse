@@ -53,6 +53,18 @@ func (s *Synapse) startApi() error {
 		resp.Write([]byte(s.synapseBuildTime))
 		resp.Write([]byte("\n"))
 	})
+	m.Get("/ready", func(ctx *macaron.Context) {
+		ctx.WriteHeader(200)
+		for _, router := range s.typedRouters {
+			for _, serviceName := range router.ServicesNames() {
+				if s, _ := router.GetService(serviceName); !s.reported {
+					ctx.Resp.Write([]byte("false"))
+					return
+				}
+			}
+		}
+		ctx.Resp.Write([]byte("true"))
+	})
 
 	m.Get("/metrics", prometheus.Handler())
 	m.Get("/", func() string {
