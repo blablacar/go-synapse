@@ -123,7 +123,9 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 
 	for _, event := range events {
 		event.Service.ServerSort.Sort(&event.Reports)
+	}
 
+	for _, event := range events {
 		available, unavailable := event.AvailableUnavailable()
 		r.synapse.serviceAvailableCount.WithLabelValues(event.Service.Name).Set(float64(available))
 		r.synapse.serviceUnavailableCount.WithLabelValues(event.Service.Name).Set(float64(unavailable))
