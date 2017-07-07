@@ -90,7 +90,7 @@ func (hap *HaProxyClient) Init() error {
 		hap.ReloadTimeoutInMilli = 1000
 	}
 	if hap.CleanupTimeoutInMilli == 0 {
-		hap.CleanupTimeoutInMilli = 35*1000
+		hap.CleanupTimeoutInMilli = 35 * 1000
 	}
 
 	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
