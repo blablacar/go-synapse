@@ -70,6 +70,7 @@ func (s *Synapse) startApi() error {
 	m.Get("/metrics", prometheus.Handler())
 	m.Get("/", func() string {
 		return `/metrics
+/ready
 /version`
 	})
 

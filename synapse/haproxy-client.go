@@ -58,6 +58,8 @@ type HaProxyClient struct {
 	ReloadMinIntervalInMilli int
 	ReloadTimeoutInMilli     int
 	StatePath                string
+	CleanupCommand           []string
+	CleanupTimeoutInMilli    int
 
 	reloadMutex sync.Mutex
 	socketPath  string
@@ -86,6 +88,9 @@ func (hap *HaProxyClient) Init() error {
 
 	if hap.ReloadTimeoutInMilli == 0 {
 		hap.ReloadTimeoutInMilli = 1000
+	}
+	if hap.CleanupTimeoutInMilli == 0 {
+		hap.CleanupTimeoutInMilli = 35*1000
 	}
 
 	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
@@ -136,6 +141,13 @@ func (hap *HaProxyClient) Reload() error {
 	}()
 	if err := nerve.ExecCommandFull(hap.ReloadCommand, env, hap.ReloadTimeoutInMilli); err != nil {
 		return errs.WithEF(err, hap.fields, "Failed to reload haproxy")
+	}
+	if len(hap.CleanupCommand) > 0 {
+		go func() {
+			if err := nerve.ExecCommandFull(hap.CleanupCommand, env, hap.CleanupTimeoutInMilli); err != nil {
+				logs.WithEF(err, hap.fields).Warn("Cleanup command failed")
+			}
+		}()
 	}
 	return nil
 }
