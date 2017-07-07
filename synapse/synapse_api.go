@@ -57,6 +57,7 @@ func (s *Synapse) startApi() error {
 		for _, router := range s.typedRouters {
 			for _, serviceName := range router.ServicesNames() {
 				if s, _ := router.GetService(serviceName); !s.reported {
+					logs.WithF(s.fields.WithField("service", serviceName)).Warn("A service is not ready yet")
 					ctx.WriteHeader(http.StatusServiceUnavailable)
 					ctx.Resp.Write([]byte("false"))
 					return
