@@ -4,6 +4,7 @@ sudo: required
 
 go:
  - 1.7
+ - 1.8
 
 install:
   - sudo apt-get install -qq upx
