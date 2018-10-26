@@ -2,5 +2,5 @@ ci:
 	! gofmt -l *.go | read nothing
 	go vet
 	go test -v ./...
-	go get github.com/golang/lint/golint
+	go get golang.org/x/lint/golint
 	golint *.go
