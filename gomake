@@ -114,7 +114,7 @@ quality() {
     errcheck ./... | grep -v 'vendor/' | grep -v 'Close(' | grep -v '_test.go'
 
     echo_green "Lint"
-    [ -f ${GOPATH}/bin/golint ] || go get -u github.com/golang/lint/golint
+    [ -f ${GOPATH}/bin/golint ] || go get -u golang.org/x/lint/golint
     for i in ${go_files}; do
         golint ${i} | grep -v 'should have comment ' || true
     done

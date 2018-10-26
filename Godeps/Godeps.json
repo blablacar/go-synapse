@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/blablacar/go-synapse",
-	"GoVersion": "go1.7",
-	"GodepVersion": "v74",
+	"GoVersion": "go1.11",
+	"GodepVersion": "v80",
 	"Packages": [
 		"././..."
 	],
