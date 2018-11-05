@@ -3,17 +3,20 @@ package synapse
 import (
 	"bufio"
 	"bytes"
-	"github.com/blablacar/go-nerve/nerve"
-	"github.com/n0rad/go-erlog/data"
-	"github.com/n0rad/go-erlog/errs"
-	"github.com/n0rad/go-erlog/logs"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/blablacar/go-nerve/nerve"
+	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
+	"github.com/n0rad/go-erlog/logs"
 )
 
 const haProxyConfigurationTemplate = `# Handled by synapse. Do not modify it.
@@ -61,12 +64,14 @@ type HaProxyClient struct {
 	CleanupCommand           []string
 	CleanupTimeoutInMilli    int
 
-	reloadMutex sync.Mutex
-	socketPath  string
-	weightRegex *regexp.Regexp
-	lastReload  time.Time
-	template    *template.Template
-	fields      data.Fields
+	reloadMutex   sync.Mutex
+	socketPath    string
+	weightRegex   *regexp.Regexp
+	enabledRegex  *regexp.Regexp
+	disabledRegex *regexp.Regexp
+	lastReload    time.Time
+	template      *template.Template
+	fields        data.Fields
 }
 
 func (hap *HaProxyClient) Init() error {
@@ -94,6 +99,9 @@ func (hap *HaProxyClient) Init() error {
 	}
 
 	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
+	//hap.enabledRegex = regexp.MustCompile(`server[\s]+([\S]+).*enabled[\s]?`)
+	hap.enabledRegex = regexp.MustCompile(`server\s+(\S+)\s+(\d+\.\d+\.\d+\.\d+):(\d+).*enabled\s?`)
+	hap.disabledRegex = regexp.MustCompile(`server[\s]+([\S]+).*disabled[\s]?`)
 
 	hap.socketPath = hap.findSocketPath()
 	if hap.socketPath == "" {
@@ -175,8 +183,21 @@ func (hap *HaProxyClient) SocketUpdate() error {
 			res := hap.weightRegex.FindStringSubmatch(server)
 			if len(res) == 3 {
 				i++
-				b.WriteString("set weight " + name + "/" + res[1] + " " + res[2] + "\n")
+				b.WriteString(fmt.Sprintf("set server %s/%s weight %s\n", name, res[1], res[2]))
 			}
+
+			res = hap.enabledRegex.FindStringSubmatch(server)
+			if len(res) == 4 {
+				i++
+				b.WriteString(fmt.Sprintf("set server %s/%s state ready\n", name, res[1]))
+				b.WriteString(fmt.Sprintf("set server %s/%s addr %s %s\n", name, res[1], res[2], res[3]))
+			}
+			res = hap.disabledRegex.FindStringSubmatch(server)
+			if len(res) == 2 {
+				i++
+				b.WriteString(fmt.Sprintf("set server %s/%s state maint\n", name, res[1]))
+			}
+
 		}
 	}
 
@@ -196,13 +217,22 @@ func (hap *HaProxyClient) SocketUpdate() error {
 			WithField("command", string(commands)), "Failed to write command to haproxy")
 	}
 
-	buff := bufio.NewReader(conn)
-	line, prefix, err := buff.ReadLine()
-	if err != nil || prefix {
-		return errs.WithEF(err, hap.fields.WithField("line-too-long", prefix), "Failed to read hap socket response")
+	scanner := bufio.NewScanner(conn)
+	updateFailed := false
+	line := ""
+	for scanner.Scan() {
+		line = scanner.Text()
+		if line != "" && !strings.HasPrefix(line, "no need to change") {
+			updateFailed = true
+			break
+		}
+
 	}
-	if string(line) != "" {
-		return errs.WithF(hap.fields.WithField("response", string(line)), "Bad response for haproxy socket command")
+	if updateFailed {
+		return errs.WithF(hap.fields.WithField("response", line), "Bad response for haproxy socket command")
+	}
+	if err := scanner.Err(); err != nil {
+		return errs.WithF(hap.fields.WithField("response", line), "Bad response for haproxy socket command")
 	}
 
 	return nil
