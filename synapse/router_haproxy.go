@@ -5,13 +5,14 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"github.com/n0rad/go-erlog/data"
-	"github.com/n0rad/go-erlog/errs"
-	"github.com/n0rad/go-erlog/logs"
 	"math/rand"
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/n0rad/go-erlog/data"
+	"github.com/n0rad/go-erlog/errs"
+	"github.com/n0rad/go-erlog/logs"
 )
 
 const PrometheusLabelSocketSuffix = "_socket"
@@ -60,27 +61,22 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 
 func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 	previous := r.lastEvents[report.Service.Name]
-
-	if previous == nil || len(previous.Reports) != len(report.Reports) {
-		logs.WithF(r.RouterCommon.fields.WithField("previous", previous).WithField("current", report)).Debug("Report length is different")
+	if previous == nil {
+		logs.WithF(r.RouterCommon.fields.WithField("service", report.Service.Name)).Debug("Service was not existing")
 		return false
 	}
 
-	for _, new := range report.Reports {
-		weightOnly := false
+	for _, _new := range report.Reports {
+		exists := false
+
 		for _, old := range previous.Reports {
-			if new.Host == old.Host &&
-				new.Port == old.Port &&
-				new.Name == old.Name &&
-				new.HaProxyServerOptions == old.HaProxyServerOptions {
-				weightOnly = true
+			if old.Name == _new.Name && _new.HaProxyServerOptions == old.HaProxyServerOptions {
+				exists = true
 				break
 			}
 		}
-
-		if !weightOnly {
-
-			logs.WithF(r.RouterCommon.fields.WithField("server", new)).Debug("Server was not existing or options has changed")
+		if !exists {
+			logs.WithF(r.RouterCommon.fields.WithField("server", _new)).Debug("Server was not existing")
 			return false
 		}
 	}
@@ -158,8 +154,15 @@ func (r *RouterHaProxy) reportToHaProxyServer(report Report, serverOptions HapSe
 	if report.Weight != nil {
 		buffer.WriteString("weight ")
 		buffer.WriteString(strconv.Itoa(int(*report.Weight)))
+		buffer.WriteString(" ")
 	}
-	buffer.WriteString(" ")
+	if report.Available != nil {
+		if *report.Available {
+			buffer.WriteString("enabled ")
+		} else {
+			buffer.WriteString("disabled ")
+		}
+	}
 	buffer.WriteString(report.HaProxyServerOptions)
 
 	res, err := renderServerOptionsTemplate(report, serverOptions)

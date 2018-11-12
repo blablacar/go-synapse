@@ -2,11 +2,12 @@ package synapse
 
 import (
 	"encoding/json"
+	"sync"
+	"time"
+
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
-	"sync"
-	"time"
 )
 
 type RouterCommon struct {
@@ -149,14 +150,45 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 		return
 	}
 
-	if err := router.Update(validEvents); err != nil {
-		r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
-		logs.WithEF(err, r.fields).Error("Failed to report watch modification")
-	}
-
+	no := false
 	for i, e := range validEvents {
 		e.Service.reported = true
-		r.lastEvents[e.Service.Name] = &validEvents[i]
+		if _, ok := r.lastEvents[e.Service.Name]; ok {
+			// disable all old reports
+			for report := range r.lastEvents[e.Service.Name].Reports {
+				r.lastEvents[e.Service.Name].Reports[report].Available = &no
+			}
+
+			// merge new reports with old ones, overwriting them when they exist
+			for _, _new := range validEvents[i].Reports {
+				found := false
+				for j, last := range r.lastEvents[e.Service.Name].Reports {
+					if last.Name == _new.Name {
+						r.lastEvents[e.Service.Name].Reports[j] = _new
+						found = true
+						break
+					}
+				}
+				if !found {
+					r.lastEvents[e.Service.Name].Reports = append(r.lastEvents[e.Service.Name].Reports, _new)
+				}
+
+			}
+
+		} else {
+			r.lastEvents[e.Service.Name] = &validEvents[i]
+		}
+	}
+
+	mergedEvents := []ServiceReport{}
+	for svc := range r.lastEvents {
+		mergedEvents = append(mergedEvents, *r.lastEvents[svc])
+
+	}
+
+	if err := router.Update(mergedEvents); err != nil {
+		r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
+		logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 	}
 
 }
