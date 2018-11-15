@@ -41,6 +41,7 @@ func TestIsSocketUpdatable(t *testing.T) {
 	srNew := ServiceReport{
 		Service: &Service{
 			Name: "ServiceA",
+			id:   0,
 		},
 		Reports: []Report{
 			NodeA,
@@ -48,7 +49,7 @@ func TestIsSocketUpdatable(t *testing.T) {
 	}
 
 	r.lastEvents = map[string]*ServiceReport{
-		"ServiceA": {
+		"ServiceA_0": {
 			Service: &Service{
 				Name: "ServiceA",
 			},
@@ -70,7 +71,7 @@ func TestIsSocketUpdatable(t *testing.T) {
 	}
 
 	// last has nodeA+nodeB, new has nodeA+nodeB
-	r.lastEvents["ServiceA"].Reports = append(r.lastEvents["ServiceA"].Reports, NodeB)
+	r.lastEvents["ServiceA_0"].Reports = append(r.lastEvents["ServiceA_0"].Reports, NodeB)
 	if u := r.isSocketUpdatable(srNew); !u {
 		t.Errorf("isSocketUpdatable should be true, was %v", u)
 	}

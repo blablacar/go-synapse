@@ -3,10 +3,12 @@ package synapse
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"sync"
+
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
-	"sync"
 )
 
 type ServiceReport struct {
@@ -78,6 +80,10 @@ type Service struct {
 	typedWatcher       Watcher
 	typedRouterOptions interface{}
 	typedServerOptions interface{}
+}
+
+func (s *Service) NameWithId() string {
+	return fmt.Sprintf("%s_%d", s.Name, s.id)
 }
 
 func (s *Service) String() string {

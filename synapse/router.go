@@ -2,9 +2,12 @@ package synapse
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
 	"github.com/n0rad/go-erlog/logs"
@@ -132,13 +135,13 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 		r.synapse.serviceUnavailableCount.WithLabelValues(event.Service.Name).Set(float64(unavailable))
 
 		if !event.HasActiveServers() {
-			if r.lastEvents[event.Service.Name] == nil {
+			if r.lastEvents[event.Service.NameWithId()] == nil {
 				logs.WithF(event.Service.fields).Warn("First Report has no active server. Not declaring in router")
 			} else {
 				logs.WithF(event.Service.fields).Error("Receiving report with no active server. Keeping previous report")
 			}
 			continue
-		} else if r.lastEvents[event.Service.Name] == nil || r.lastEvents[event.Service.Name].HasActiveServers() != event.HasActiveServers() {
+		} else if r.lastEvents[event.Service.NameWithId()] == nil || r.lastEvents[event.Service.NameWithId()].HasActiveServers() != event.HasActiveServers() {
 			logs.WithF(event.Service.fields.WithField("event", event)).Info("Server(s) available for router")
 		}
 
@@ -150,51 +153,63 @@ func (r *RouterCommon) handleReport(events []ServiceReport, router Router) {
 		return
 	}
 
-	no := false
-	for i, e := range validEvents {
-		e.Service.reported = true
-		if _, ok := r.lastEvents[e.Service.Name]; ok {
-			// disable all old reports
-			for report := range r.lastEvents[e.Service.Name].Reports {
-				r.lastEvents[e.Service.Name].Reports[report].Available = &no
-			}
+	for i, event := range validEvents {
+		// Event not in lastEvents ? Do nothing
+		if r.lastEvents[event.Service.NameWithId()] == nil {
+			continue
+		}
 
-			// merge new reports with old ones, overwriting them when they exist
-			for _, _new := range validEvents[i].Reports {
-				found := false
-				for j, last := range r.lastEvents[e.Service.Name].Reports {
-					if last.Name == _new.Name {
-						r.lastEvents[e.Service.Name].Reports[j] = _new
-						found = true
-						break
-					}
+		for _, lastReport := range r.lastEvents[event.Service.NameWithId()].Reports {
+			found := false
+			for _, newReport := range event.Reports {
+				if newReport.Name == lastReport.Name {
+					found = true
+					break
 				}
-				if !found {
-					r.lastEvents[e.Service.Name].Reports = append(r.lastEvents[e.Service.Name].Reports, _new)
-				}
-
 			}
-
-		} else {
-			r.lastEvents[e.Service.Name] = &validEvents[i]
+			if !found {
+				validEvents[i].Reports = append(event.Reports, Report{
+					nerve.Report{
+						Available:            &found,
+						UnavailableReason:    lastReport.UnavailableReason,
+						Host:                 lastReport.Host,
+						Port:                 lastReport.Port,
+						Name:                 lastReport.Name,
+						HaProxyServerOptions: lastReport.HaProxyServerOptions,
+						Weight:               lastReport.Weight,
+						Labels:               lastReport.Labels,
+					},
+					lastReport.CreationTime,
+				})
+			}
 		}
 	}
 
-	mergedEvents := []ServiceReport{}
-	for svc := range r.lastEvents {
-		mergedEvents = append(mergedEvents, *r.lastEvents[svc])
-
-	}
-
-	if err := router.Update(mergedEvents); err != nil {
+	if err := router.Update(validEvents); err != nil {
 		r.synapse.routerUpdateFailures.WithLabelValues(r.Type).Inc()
 		logs.WithEF(err, r.fields).Error("Failed to report watch modification")
 	}
 
+	for i, e := range validEvents {
+		e.Service.reported = true
+		r.lastEvents[e.Service.NameWithId()] = &validEvents[i]
+	}
 }
 
 func (r *RouterCommon) FilterCorrelations(current ServiceReport, serviceReports []ServiceReport) ServiceReport {
+	var correlatedServiceRepr string
 	if current.Service.ServerCorrelation.OtherServiceName == "" {
+		return current
+	}
+
+	otherServicePrefix := fmt.Sprintf("%s_", current.Service.ServerCorrelation.OtherServiceName)
+	for svcRepr := range r.lastEvents {
+		if strings.HasPrefix(svcRepr, otherServicePrefix) {
+			correlatedServiceRepr = svcRepr
+			break
+		}
+	}
+	if correlatedServiceRepr == "" {
 		return current
 	}
 

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"regexp"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	haproxy "github.com/bcicen/go-haproxy"
 	"github.com/blablacar/go-nerve/nerve"
 	"github.com/n0rad/go-erlog/data"
 	"github.com/n0rad/go-erlog/errs"
@@ -99,7 +99,6 @@ func (hap *HaProxyClient) Init() error {
 	}
 
 	hap.weightRegex = regexp.MustCompile(`server[\s]+([\S]+).*weight[\s]+([\d]+)`)
-	//hap.enabledRegex = regexp.MustCompile(`server[\s]+([\S]+).*enabled[\s]?`)
 	hap.enabledRegex = regexp.MustCompile(`server\s+(\S+)\s+(\d+\.\d+\.\d+\.\d+):(\d+).*enabled\s?`)
 	hap.disabledRegex = regexp.MustCompile(`server[\s]+([\S]+).*disabled[\s]?`)
 
@@ -170,70 +169,45 @@ func (hap *HaProxyClient) SocketUpdate() error {
 		logs.WithEF(err, hap.fields).Warn("Failed to write configuration file")
 	}
 
-	conn, err := net.Dial("unix", hap.socketPath)
-	if err != nil {
-		return errs.WithEF(err, hap.fields.WithField("socket", hap.socketPath), "Failed to connect to haproxy socket")
-	}
-	defer conn.Close()
+	hapClient := &haproxy.HAProxyClient{Addr: fmt.Sprintf("unix://%s", hap.socketPath)}
 
-	i := 0
-	b := bytes.Buffer{}
 	for name, servers := range hap.Backend {
 		for _, server := range servers {
-			res := hap.weightRegex.FindStringSubmatch(server)
-			if len(res) == 3 {
-				i++
-				b.WriteString(fmt.Sprintf("set server %s/%s weight %s\n", name, res[1], res[2]))
+			cmd := new(strings.Builder)
+
+			match := hap.weightRegex.FindStringSubmatch(server)
+			if len(match) == 3 {
+				cmd.WriteString(fmt.Sprintf("set server %s/%s weight %s\n", name, match[1], match[2]))
+			}
+			match = hap.enabledRegex.FindStringSubmatch(server)
+			if len(match) == 4 {
+				cmd.WriteString(fmt.Sprintf("set server %s/%s state ready\n", name, match[1]))
+				cmd.WriteString(fmt.Sprintf("set server %s/%s addr %s %s\n", name, match[1], match[2], match[3]))
+			}
+			match = hap.disabledRegex.FindStringSubmatch(server)
+			if len(match) == 2 {
+				cmd.WriteString(fmt.Sprintf("set server %s/%s state maint\n", name, match[1]))
 			}
 
-			res = hap.enabledRegex.FindStringSubmatch(server)
-			if len(res) == 4 {
-				i++
-				b.WriteString(fmt.Sprintf("set server %s/%s state ready\n", name, res[1]))
-				b.WriteString(fmt.Sprintf("set server %s/%s addr %s %s\n", name, res[1], res[2], res[3]))
+			if len(cmd.String()) == 0 {
+				continue
 			}
-			res = hap.disabledRegex.FindStringSubmatch(server)
-			if len(res) == 2 {
-				i++
-				b.WriteString(fmt.Sprintf("set server %s/%s state maint\n", name, res[1]))
+
+			resp, err := hapClient.RunCommand(strings.TrimSpace(cmd.String()))
+			if err != nil {
+				return errs.WithF(hap.fields.WithFields(data.Fields{"command": cmd.String(), "error": err.Error()}), "Bad response for haproxy socket command")
+			}
+
+			for _, line := range strings.Split(resp.String(), "\n") {
+				if line != "" && !strings.HasPrefix(line, "no need to change") && !strings.HasPrefix(line, "IP changed from") {
+					return errs.WithF(hap.fields.WithFields(data.Fields{"command": cmd.String(), "response": resp.String()}), "Bad response for haproxy socket command")
+				}
 			}
 
 		}
 	}
 
-	if b.Len() == 0 {
-		logs.WithF(hap.fields).Debug("Nothing to update by socket. No weight set")
-		return nil
-	}
-
-	commands := b.Bytes()
-
-	logs.WithF(hap.fields.WithField("command", string(commands))).Trace("Running command on hap socket")
-	count, err := conn.Write(commands)
-	if count != len(commands) || err != nil {
-		return errs.WithEF(err, hap.fields.
-			WithField("written", count).
-			WithField("len", len(commands)).
-			WithField("command", string(commands)), "Failed to write command to haproxy")
-	}
-
-	scanner := bufio.NewScanner(conn)
-	updateFailed := false
-	line := ""
-	for scanner.Scan() {
-		line = scanner.Text()
-		if line != "" && !strings.HasPrefix(line, "no need to change") {
-			updateFailed = true
-			break
-		}
-
-	}
-	if updateFailed {
-		return errs.WithF(hap.fields.WithField("response", line), "Bad response for haproxy socket command")
-	}
-	if err := scanner.Err(); err != nil {
-		return errs.WithF(hap.fields.WithField("response", line), "Bad response for haproxy socket command")
-	}
+	logs.WithF(hap.fields).Debug("Successfully updated haproxy")
 
 	return nil
 }
