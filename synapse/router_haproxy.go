@@ -60,7 +60,7 @@ func (r *RouterHaProxy) Init(s *Synapse) error {
 }
 
 func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
-	previous := r.lastEvents[report.Service.Name]
+	previous := r.lastEvents[report.Service.NameWithId()]
 	if previous == nil {
 		logs.WithF(r.RouterCommon.fields.WithField("service", report.Service.Name)).Debug("Service was not existing")
 		return false
@@ -70,16 +70,19 @@ func (r *RouterHaProxy) isSocketUpdatable(report ServiceReport) bool {
 		exists := false
 
 		for _, old := range previous.Reports {
+
 			if old.Name == _new.Name && _new.HaProxyServerOptions == old.HaProxyServerOptions {
 				exists = true
 				break
 			}
 		}
 		if !exists {
-			logs.WithF(r.RouterCommon.fields.WithField("server", _new)).Debug("Server was not existing")
+			logs.WithF(r.RouterCommon.fields.WithField("server", _new)).Info("Server was not existing")
 			return false
 		}
 	}
+
+	logs.WithF(r.RouterCommon.fields.WithField("service", report.Service.Name)).Debug("Service is updatable by socket")
 	return true
 }
 
