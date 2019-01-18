@@ -224,8 +224,8 @@ test() {
 }
 
 docker_push() {
-    branch=$(git branch | grep \* | cut -d ' ' -f2)
-    if [ $branch != "master" ]; then
+    commitHash=$(git rev-parse HEAD)
+    if [ $commitHash != "$(git rev-parse master)" ]; then
         echo_red "Not on master"
         return
     fi
