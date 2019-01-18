@@ -1,12 +1,14 @@
 language: go
-
 sudo: required
-
 go:
- - 1.11
-
+- 1.11
 install:
-  - sudo apt-get install -qq upx
-
+- sudo apt-get install -qq upx
 script:
-  - ./gomake
+- bash -c 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin'
+- "./gomake"
+- "./gomake docker_push"
+env:
+  global:
+  - secure: ClStPrbv+A9NJS18CpAWvmEZ50RyAJLwc415NDiRJciJFobmbIA0PaB6g6XJfHu57jlMN7jOgStEdaC8MLNLyoKugDW/ab08TfGNmcmzcJYVjjFWQmv0Z3WsvDVtCETN5WTaBWlqlDBJN4Oe3eGnxE81N9/YFX2NEWs+McnsOzqKWyyFL6TFUsUGO7qbhNLlVojQmTbUL9KaqJdz2KzVjzTcHLHNLj8wa1thO4sd8BAUg/zx4Avf2whWW3VyHSLeNhx5BJ6kZPveJBMNhFGF/1Mtxn9Ugzbsn1rkD5W/juHgVSCep3nIpkwmLh+dKVwQrfq6w1Bp2xPhYyeFf3ULflmea3lHL/MATaR73u4ZA0AgWQugRhUHSKwZ922qykWEli605KkJ11Wm0xrOlphhGGOJPUd7Va2IAYmYDodmiVU2viCirc1HTccp4AdkeYzPVJSCdBqoh1+Vv6fLkHa/kQ3fGaIa+uGSoBV1mhaFys6NpFFbFyPNV90n/k2a1PHOewXsiOpomQxy7n+rVyz4+bV+473i/XsDqj0Eoi7FiVyQgoK00k/QH3QD9LaFiisyvMKzO+SdRvlGgnv+bMiCXdZsfa1lOE8kObKxhGmN3zn+NcRQ31GbIm+qq2fgfWJpHKScfIczkR88BeQiEYTZAH46u0ZWXYtr0jI9Q5gmDfI=
+  - secure: y55ReQZbYMIP6vgDqi1HOfvV+FlB5QWJfwmEHTce60QyZe4oBmCPaA3dDEqWwN5/HvONNPyxsyIehsCDNLnp6rbQpRtgqPU2tZaGt3jqfQiPC3GItppWrDLx/XbEmlkdYvI8fV60qrYg9LetOe3jAb3Ou9NPb3MdTLA9NuKSHtZCWCFqFfsr68yC57mlR1xjOVJj4KaTNOMd51FdxG756mFcA3x2G7parCVOewE8E9hlLiQBHjQDlvSwMSBFQOW47yebQ7s8CnfU6hE4db2cMWfsXvSf259QY5StCBOKrC43+pXzwmtiQZztvTZBn4pmUQ1CyIP3VzxEuUwgWBFuEgnmRmgqVtU1WNbqz7QpD3k9GC7x3spEYuyz32JHoJwgrxIOaujy8LHwuT2ceIOKm2Xg+/9OhuTKIaHzTaLJ0BzFIyi3oj4GBIpEDmltXcEJZn5uWXU0Tcmc+tFWCdI4Lri7wIe+VsAXPeHz17y5IafHtMeBC2zhE4pn3m9pHunzHcsH/fYwOmSJacgcRd4bd7AO6K9YZ8MwhM+IVGvOTnrSFlV9ggu04xf1ZoowFkbba2MB51DYx9x5QRor1fFi5ZWjw56QVCNsINcmRgpAUUxdUa5DGOTfmIhJMtoseCnGjeeHgNajBjGYP8+zbdpzz3NUCSEIzWBVGA5W/4JRTiY=

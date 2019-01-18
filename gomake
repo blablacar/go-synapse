@@ -223,6 +223,25 @@ test() {
     echo_purple "Test duration : $((`date +%s`-${start}))s"
 }
 
+docker_push() {
+    branch=$(git branch | grep \* | cut -d ' ' -f2)
+    if [ $branch != "master" ]; then
+        echo_red "Not on master"
+        return
+    fi
+    
+    echo_purple "Building container"
+    (cd ${work_path}; docker build -t ${docker_user}/${app}:latest .)
+    echo_purple "Push latest"
+    docker push ${docker_user}/${app}:latest
+
+    tag=$(git tag -l --points-at HEAD) || true
+    if [ "$tag" != "" ]; then
+        docker tag ${docker_user}/${app}:latest ${docker_user}/${app}:$tag
+        docker push ${docker_user}/${app}:$tag
+    fi
+}
+
 #########################################
 #########################################
 
@@ -253,7 +272,7 @@ fi
 command_count=0
 for i in "${commands[@]}"; do
     case ${i} in
-        test|build|release|clean|quality|gomake_update) ${i}; ((++command_count));;
+        test|build|release|clean|quality|gomake_update|docker_push) ${i}; ((++command_count));;
         *)                                              echo_red "Unknown command '${i}'"; echo ${helper}; exit 1;;
     esac
 done
