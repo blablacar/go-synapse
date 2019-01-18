@@ -231,14 +231,14 @@ docker_push() {
     fi
     
     echo_purple "Building container"
-    (cd ${work_path}; docker build -t ${docker_user}/${app}:latest .)
+    (cd ${work_path}; docker build -t ${docker_user}/${docker_app}:latest .)
     echo_purple "Push latest"
-    docker push ${docker_user}/${app}:latest
+    docker push ${docker_user}/${docker_app}:latest
 
     tag=$(git tag -l --points-at HEAD) || true
     if [ "$tag" != "" ]; then
-        docker tag ${docker_user}/${app}:latest ${docker_user}/${app}:$tag
-        docker push ${docker_user}/${app}:$tag
+        docker tag ${docker_user}/${docker_app}:latest ${docker_user}/${docker_app}:$tag
+        docker push ${docker_user}/${docker_app}:$tag
     fi
 }
 
